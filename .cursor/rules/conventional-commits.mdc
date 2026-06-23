@@ -1,0 +1,48 @@
+---
+description: Commit messages must follow Conventional Commits v1.0.0
+alwaysApply: true
+---
+
+# Conventional Commits
+
+Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+## Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+- Use imperative mood in the description: `add prompt` not `added prompt`.
+- Keep the subject line ≤ 72 characters.
+- Scope is optional but encouraged for this project (e.g. `shell`, `parser`, `builtin`).
+
+## Types
+
+| Type | Use for |
+|------|---------|
+| `feat` | New stage behavior or user-facing capability |
+| `fix` | Bug fix |
+| `test` | Adding or updating tests only |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `chore` | Tooling, config, or maintenance |
+
+## Examples
+
+```
+feat(shell): print $ prompt on startup
+
+feat(parser): tokenize quoted arguments
+
+fix(builtin): handle exit with no status code
+
+test(parser): add table-driven tests for quote escaping
+```
+
+## Breaking changes
+
+If a change is breaking, append `!` after type/scope and add a `BREAKING CHANGE:` footer.

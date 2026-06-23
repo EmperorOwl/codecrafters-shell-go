@@ -1,0 +1,42 @@
+---
+description: Go code style per Effective Go and gofmt
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go Style (Effective Go)
+
+Follow [Effective Go](https://go.dev/doc/effective_go) and standard Go tooling.
+
+## Formatting
+
+- Run `gofmt` (or `go fmt ./...`) on all changed Go files before handing off.
+- Use `goimports` when available to manage imports.
+
+## Structure
+
+- Short, focused functions with clear names (`CamelCase` exported, `camelCase` unexported).
+- Keep `main` in `app/main.go`; put logic in other files or subpackages under `app/`.
+- One package per directory; avoid stashing unrelated helpers in `main`.
+- Accept interfaces, return concrete types where practical.
+
+## Errors and APIs
+
+- Check errors; do not ignore `_` unless intentional and obvious.
+- Return errors rather than panicking for expected failure paths.
+- Document exported identifiers with concise comments starting with the name.
+
+## Naming and literals
+
+- Prefer `i` for short loops; meaningful names for longer scopes.
+- Use mixed caps for acronyms consistently (`HTTPServer`, not `HttpServer`).
+
+## Example layout
+
+```
+app/
+  main.go          # REPL loop, delegates to shell package
+  shell/
+    shell.go       # Shell type and Run method
+    builtins.go    # builtin command handlers
+```
