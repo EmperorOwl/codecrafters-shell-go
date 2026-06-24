@@ -1,6 +1,6 @@
-//go:build !windows
+//go:build windows
 
-package shell
+package path
 
 import (
 	"os"
@@ -13,29 +13,31 @@ func TestFindExecutableInPath(t *testing.T) {
 		name      string
 		command   string
 		fileName  string
-		filePerms os.FileMode
 		pathEnv   string
 		wantFound bool
 	}{
 		{
-			name:      "finds executable in path",
-			command:   "valid_command",
-			fileName:  "valid_command",
-			filePerms: 0o755,
+			name:      "finds executable without extension",
+			command:   "mycommand",
+			fileName:  "mycommand.exe",
 			wantFound: true,
 		},
 		{
-			name:      "skips file without execute permission",
+			name:      "finds executable with extension",
+			command:   "mycommand.exe",
+			fileName:  "mycommand.exe",
+			wantFound: true,
+		},
+		{
+			name:      "skips non-executable extension",
 			command:   "noexec",
-			fileName:  "noexec",
-			filePerms: 0o644,
+			fileName:  "noexec.txt",
 			wantFound: false,
 		},
 		{
 			name:      "skips missing directory",
 			command:   "valid_command",
-			fileName:  "valid_command",
-			filePerms: 0o755,
+			fileName:  "valid_command.exe",
 			pathEnv:   "missing",
 			wantFound: false,
 		},
@@ -53,7 +55,7 @@ func TestFindExecutableInPath(t *testing.T) {
 			var filePath string
 			if tt.fileName != "" {
 				filePath = filepath.Join(dir, tt.fileName)
-				if err := os.WriteFile(filePath, nil, tt.filePerms); err != nil {
+				if err := os.WriteFile(filePath, nil, 0o644); err != nil {
 					t.Fatalf("WriteFile() error = %v", err)
 				}
 			}

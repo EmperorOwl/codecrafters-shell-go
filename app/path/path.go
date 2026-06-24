@@ -1,4 +1,4 @@
-package shell
+package path
 
 import "path/filepath"
 

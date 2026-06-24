@@ -3,6 +3,8 @@ package shell
 import (
 	"os"
 	"os/exec"
+
+	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 )
 
 func newExternalCommand(fields []string, executablePath string) *exec.Cmd {
@@ -19,7 +21,7 @@ func ExecuteExternalProgram(fields []string) (executed bool, err error) {
 		return false, nil
 	}
 
-	path, ok := FindExecutableInPath(fields[0], os.Getenv("PATH"))
+	path, ok := shellpath.FindExecutableInPath(fields[0], os.Getenv("PATH"))
 	if !ok {
 		return false, nil
 	}

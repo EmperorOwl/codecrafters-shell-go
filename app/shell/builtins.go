@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 )
 
 var shellBuiltins = map[string]struct{}{
@@ -26,7 +28,7 @@ func TypeOutput(command string) string {
 	if IsShellBuiltin(command) {
 		return command + " is a shell builtin"
 	}
-	if path, ok := FindExecutableInPath(command, os.Getenv("PATH")); ok {
+	if path, ok := shellpath.FindExecutableInPath(command, os.Getenv("PATH")); ok {
 		return command + " is " + path
 	}
 	return command + ": not found"
