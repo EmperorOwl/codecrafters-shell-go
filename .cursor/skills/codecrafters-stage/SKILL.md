@@ -8,21 +8,7 @@ description: >-
 
 # CodeCrafters Stage Workflow
 
-Follow these steps in order for each challenge stage. Track progress with the checklist below.
-
-```
-Stage Progress:
-- [ ] 1. Understand the task
-- [ ] 2. Plan changes (if needed)
-- [ ] 3. Implement the code
-- [ ] 4. Write local tests
-- [ ] 5. Run local tests
-- [ ] 6. Run codecrafters test
-- [ ] 7. Hand off for review
-- [ ] 8. Human review (wait for user)
-- [ ] 9. Run codecrafters submit (after approval only)
-- [ ] 10. Stage marked complete (user action)
-```
+Follow these steps in order for each challenge stage.
 
 ## 1. Understand the task
 
@@ -45,7 +31,7 @@ Required only for **non-trivial** tasks or when requirements are ambiguous.
 3. List any clarifying questions for the user.
 4. Present the plan and questions, then **stop and wait for approval**.
 
-Do **not** implement, test, or submit until the user approves the plan or answers your questions.
+Do **not** implement, test, or commit until the user approves the plan or answers your questions.
 
 ## 3. Implement the code
 
@@ -87,40 +73,56 @@ codecrafters test
 
 When both test suites pass, stop coding and report:
 
+- **Status** — one sentence summarising where you are. Adapt to what actually happened, e.g.:
+  - `Plan skipped · code done · local tests passed · codecrafters tests passed · waiting for your review.`
+  - `Plan approved · code done · local tests passed · codecrafters tests passed · waiting for your review.`
 - Brief summary of what was implemented.
 - Files changed.
+- Test results (`go test ./...` and `codecrafters test`).
 - A suggested **Conventional Commits** message (see project commit rule). Example:
 
   ```
   feat(shell): print prompt on startup
   ```
 
-Do **not** commit or submit yet. Wait for human review (step 8).
+Do **not** commit or push yet. Wait for human review (step 8).
 
 ## 8. Human review
 
 The user reviews the code and either:
 
 - Requests changes → address feedback, then repeat steps 4–7 as needed.
-- Approves the code → proceed to step 9 when the user asks to submit.
+- Approves and asks to commit → proceed to step 9.
 
 Only create a git commit when the user explicitly requests it.
 
-## 9. Run codecrafters submit
+## 9. Commit and push
 
-After explicit user approval to submit:
+After explicit user approval to commit:
+
+1. Stage only the relevant files (exclude unrelated changes).
+2. Commit with the agreed message from step 7 (updated if the user requested changes).
+3. Push to `master`:
 
 ```bash
-codecrafters submit -m "<conventional-commit-message>"
+git add <files>
+git commit -m "<conventional-commit-message>"
+git push origin master
 ```
 
-Use the agreed commit message from step 7 (updated if the user requested changes).
+CodeCrafters runs tests automatically on push. Do not use `codecrafters submit`.
 
 ## 10. Mark stage as completed
 
 The user marks the stage complete in the CodeCrafters browser UI.
 
-When the user invokes **/next-stage**, start again at **step 1** for the next stage.
+When the user invokes **/next-stage** (or `/codecrafters-stage`), start again at **step 1** for the next stage.
+
+## Follow-up work (refactors, fixes, off-skill requests)
+
+When the user requests changes **without** invoking this skill — refactors, test tweaks, review feedback, etc. — still follow the same coding and testing standards, and **always end with a suggested Conventional Commits message**, even if you are not at step 7 of a full stage run.
+
+That way, when the user says they are ready to commit, the commit message is already agreed and visible in the conversation.
 
 ## Project layout reference
 
@@ -138,4 +140,4 @@ When the user invokes **/next-stage**, start again at **step 1** for the next st
 | View current stage | `codecrafters task` |
 | Local tests | `go test ./...` |
 | Challenge tests | `codecrafters test` |
-| Submit stage | `codecrafters submit -m "type(scope): description"` |
+| Commit and push stage | `git commit` + `git push origin master` |
