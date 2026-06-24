@@ -7,5 +7,8 @@ import (
 )
 
 func main() {
-	shell.WritePrompt(os.Stdout)
+	s := shell.New()
+	if err := s.Run(os.Stdin, os.Stdout); err != nil {
+		os.Exit(1)
+	}
 }
