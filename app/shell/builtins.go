@@ -3,6 +3,7 @@ package shell
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -24,6 +25,9 @@ func EchoOutput(args []string) string {
 func TypeOutput(command string) string {
 	if IsShellBuiltin(command) {
 		return command + " is a shell builtin"
+	}
+	if path, ok := FindExecutableInPath(command, os.Getenv("PATH")); ok {
+		return command + " is " + path
 	}
 	return command + ": not found"
 }
