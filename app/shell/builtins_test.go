@@ -2,6 +2,9 @@ package shell
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -156,6 +159,59 @@ func TestShellRunEchoBuiltin(t *testing.T) {
 				t.Errorf("Run() output = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTypeOutputExecutable(t *testing.T) {
+	dir := t.TempDir()
+
+	if runtime.GOOS == "windows" {
+		executable := filepath.Join(dir, "mycommand.exe")
+		if err := os.WriteFile(executable, nil, 0o644); err != nil {
+			t.Fatalf("WriteFile() error = %v", err)
+		}
+
+		t.Setenv("PATH", dir)
+
+		tests := []struct {
+			name    string
+			command string
+			want    string
+		}{
+			{
+				name:    "without extension",
+				command: "mycommand",
+				want:    "mycommand is " + executable,
+			},
+			{
+				name:    "with extension",
+				command: "mycommand.exe",
+				want:    "mycommand.exe is " + executable,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if got := TypeOutput(tt.command); got != tt.want {
+					t.Errorf("TypeOutput(%q) = %q, want %q", tt.command, got, tt.want)
+				}
+			})
+		}
+		return
+	}
+
+	command := "mycommand"
+	executable := filepath.Join(dir, command)
+	if err := os.WriteFile(executable, nil, 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Setenv("PATH", dir)
+
+	got := TypeOutput(command)
+	want := command + " is " + executable
+	if got != want {
+		t.Errorf("TypeOutput(%q) = %q, want %q", command, got, want)
 	}
 }
 
