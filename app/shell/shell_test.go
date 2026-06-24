@@ -18,6 +18,11 @@ func TestShellRun(t *testing.T) {
 			want:  "$ hello\n$ ",
 		},
 		{
+			name:  "echo hello with EOF does not print prompt again",
+			input: "echo hello",
+			want:  "$ hello\n",
+		},
+		{
 			name:  "unknown command",
 			input: "xyz\n",
 			want:  "$ xyz: command not found\n$ ",
