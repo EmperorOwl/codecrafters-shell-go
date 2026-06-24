@@ -37,8 +37,14 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 		}
 
 		command := strings.Fields(line)[0]
-		if HandleBuiltin(command) {
-			return nil
+		if handled, shouldExit := TryBuiltin(line, out); handled {
+			if shouldExit {
+				return nil
+			}
+			if err == io.EOF {
+				return nil
+			}
+			continue
 		}
 
 		fmt.Fprintf(out, "%s\n", CommandNotFoundMessage(command))
