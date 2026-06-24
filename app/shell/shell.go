@@ -36,10 +36,21 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		command := strings.Fields(line)[0]
+		fields := strings.Fields(line)
+		command := fields[0]
 		if handled, shouldExit := TryBuiltin(line, out); handled {
 			if shouldExit {
 				return nil
+			}
+			if err == io.EOF {
+				return nil
+			}
+			continue
+		}
+
+		if executed, err := ExecuteExternalProgram(fields); executed {
+			if err != nil {
+				return err
 			}
 			if err == io.EOF {
 				return nil
