@@ -15,14 +15,19 @@ func TestCd(t *testing.T) {
 	//       bin/
 	//     a/
 	//       b/
+	//     home/
 	base := t.TempDir()
 	localDir := filepath.Join(base, "local")
 	localBinDir := filepath.Join(localDir, "bin")
 	nestedDir := filepath.Join(base, "a", "b")
+	homeDir := filepath.Join(base, "home")
 	if err := os.MkdirAll(localBinDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.MkdirAll(homeDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 
@@ -41,6 +46,7 @@ func TestCd(t *testing.T) {
 		name       string
 		startDir   string
 		directory  string
+		home       string
 		wantDir    string
 		wantOutput string
 	}{
@@ -69,6 +75,13 @@ func TestCd(t *testing.T) {
 			wantDir:   localDir,
 		},
 		{
+			name:      "home directory",
+			startDir:  nestedDir,
+			directory: "~",
+			home:      homeDir,
+			wantDir:   homeDir,
+		},
+		{
 			name:       "missing relative directory",
 			startDir:   base,
 			directory:  "./does_not_exist",
@@ -86,6 +99,10 @@ func TestCd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.home != "" {
+				t.Setenv("HOME", tt.home)
+			}
+
 			t.Chdir(tt.startDir)
 
 			var out bytes.Buffer

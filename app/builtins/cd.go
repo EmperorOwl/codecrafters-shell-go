@@ -14,11 +14,23 @@ func ChangeDirectory(directory string) error {
 	return os.Chdir(directory)
 }
 
+func ResolveDirectory(directory string) string {
+	if directory == "~" {
+		return os.Getenv("HOME")
+	}
+	return directory
+}
+
 func Cd(out io.Writer, directory string) {
 	if directory == "" {
 		return
 	}
-	if err := ChangeDirectory(directory); err != nil {
+	target := ResolveDirectory(directory)
+	if target == "" {
+		fmt.Fprintln(out, CdErrorMessage(directory))
+		return
+	}
+	if err := ChangeDirectory(target); err != nil {
 		fmt.Fprintln(out, CdErrorMessage(directory))
 	}
 }
