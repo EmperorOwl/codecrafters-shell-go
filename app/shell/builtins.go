@@ -12,6 +12,7 @@ import (
 var shellBuiltins = map[string]struct{}{
 	"echo": {},
 	"exit": {},
+	"pwd":  {},
 	"type": {},
 }
 
@@ -22,6 +23,10 @@ func IsShellBuiltin(command string) bool {
 
 func EchoOutput(args []string) string {
 	return strings.Join(args, " ")
+}
+
+func PwdOutput() (string, error) {
+	return os.Getwd()
 }
 
 func TypeOutput(command string) string {
@@ -45,6 +50,13 @@ func TryBuiltin(line string, out io.Writer) (handled bool, shouldExit bool) {
 		return true, true
 	case "echo":
 		fmt.Fprintln(out, EchoOutput(fields[1:]))
+		return true, false
+	case "pwd":
+		cwd, err := PwdOutput()
+		if err != nil {
+			return true, false
+		}
+		fmt.Fprintln(out, cwd)
 		return true, false
 	case "type":
 		target := ""

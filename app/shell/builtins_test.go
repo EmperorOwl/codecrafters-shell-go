@@ -59,6 +59,12 @@ func TestTryBuiltin(t *testing.T) {
 			wantHandled: true,
 		},
 		{
+			name:        "type reports pwd builtin",
+			line:        "type pwd",
+			wantOutput:  "pwd is a shell builtin\n",
+			wantHandled: true,
+		},
+		{
 			name:        "type reports not found",
 			line:        "type invalid_command",
 			wantOutput:  "invalid_command: not found\n",
@@ -86,6 +92,26 @@ func TestTryBuiltin(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("pwd prints working directory", func(t *testing.T) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd() error = %v", err)
+		}
+
+		var out bytes.Buffer
+		handled, shouldExit := TryBuiltin("pwd", &out)
+		if !handled {
+			t.Fatalf("TryBuiltin() handled = false, want true")
+		}
+		if shouldExit {
+			t.Errorf("TryBuiltin() shouldExit = true, want false")
+		}
+		wantOutput := cwd + "\n"
+		if got := out.String(); got != wantOutput {
+			t.Errorf("TryBuiltin() output = %q, want %q", got, wantOutput)
+		}
+	})
 
 	t.Run("type reports executable", func(t *testing.T) {
 		dir := t.TempDir()
