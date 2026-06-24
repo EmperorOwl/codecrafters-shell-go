@@ -65,6 +65,12 @@ func TestTryBuiltin(t *testing.T) {
 			wantHandled: true,
 		},
 		{
+			name:        "type reports cd builtin",
+			line:        "type cd",
+			wantOutput:  "cd is a shell builtin\n",
+			wantHandled: true,
+		},
+		{
 			name:        "type reports not found",
 			line:        "type invalid_command",
 			wantOutput:  "invalid_command: not found\n",
@@ -110,6 +116,72 @@ func TestTryBuiltin(t *testing.T) {
 		wantOutput := cwd + "\n"
 		if got := out.String(); got != wantOutput {
 			t.Errorf("TryBuiltin() output = %q, want %q", got, wantOutput)
+		}
+	})
+
+	t.Run("cd changes to absolute path", func(t *testing.T) {
+		target, err := filepath.Abs(t.TempDir())
+		if err != nil {
+			t.Fatalf("Abs() error = %v", err)
+		}
+
+		t.Chdir(t.TempDir())
+
+		var out bytes.Buffer
+		handled, shouldExit := TryBuiltin("cd "+target, &out)
+		if !handled {
+			t.Fatalf("TryBuiltin() handled = false, want true")
+		}
+		if shouldExit {
+			t.Errorf("TryBuiltin() shouldExit = true, want false")
+		}
+		if got := out.String(); got != "" {
+			t.Errorf("TryBuiltin() output = %q, want empty", got)
+		}
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd() error = %v", err)
+		}
+		if cwd != target {
+			t.Errorf("Getwd() = %q, want %q", cwd, target)
+		}
+	})
+
+	t.Run("cd prints error for missing directory", func(t *testing.T) {
+		invalid := "/does_not_exist_codecrafters_test"
+		if runtime.GOOS == "windows" {
+			vol := os.Getenv("SystemDrive")
+			if vol == "" {
+				vol = "C:"
+			}
+			invalid = filepath.Join(vol+string(filepath.Separator), "does_not_exist_codecrafters_test")
+		}
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd() error = %v", err)
+		}
+
+		var out bytes.Buffer
+		handled, shouldExit := TryBuiltin("cd "+invalid, &out)
+		if !handled {
+			t.Fatalf("TryBuiltin() handled = false, want true")
+		}
+		if shouldExit {
+			t.Errorf("TryBuiltin() shouldExit = true, want false")
+		}
+		wantOutput := CdErrorMessage(invalid) + "\n"
+		if got := out.String(); got != wantOutput {
+			t.Errorf("TryBuiltin() output = %q, want %q", got, wantOutput)
+		}
+
+		afterCwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd() error = %v", err)
+		}
+		if afterCwd != cwd {
+			t.Errorf("Getwd() after failed cd = %q, want %q", afterCwd, cwd)
 		}
 	})
 

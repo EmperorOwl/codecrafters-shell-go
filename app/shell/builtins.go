@@ -10,6 +10,7 @@ import (
 )
 
 var shellBuiltins = map[string]struct{}{
+	"cd":   {},
 	"echo": {},
 	"exit": {},
 	"pwd":  {},
@@ -27,6 +28,14 @@ func EchoOutput(args []string) string {
 
 func PwdOutput() (string, error) {
 	return os.Getwd()
+}
+
+func CdErrorMessage(directory string) string {
+	return "cd: " + directory + ": No such file or directory"
+}
+
+func ChangeDirectory(directory string) error {
+	return os.Chdir(directory)
 }
 
 func TypeOutput(command string) string {
@@ -57,6 +66,15 @@ func TryBuiltin(line string, out io.Writer) (handled bool, shouldExit bool) {
 			return true, false
 		}
 		fmt.Fprintln(out, cwd)
+		return true, false
+	case "cd":
+		if len(fields) < 2 {
+			return true, false
+		}
+		directory := fields[1]
+		if err := ChangeDirectory(directory); err != nil {
+			fmt.Fprintln(out, CdErrorMessage(directory))
+		}
 		return true, false
 	case "type":
 		target := ""
