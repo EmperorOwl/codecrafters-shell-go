@@ -1,9 +1,6 @@
 package shell
 
-import (
-	"os"
-	"path/filepath"
-)
+import "path/filepath"
 
 func FindExecutableInPath(command, pathEnv string) (string, bool) {
 	for _, dir := range filepath.SplitList(pathEnv) {
@@ -12,18 +9,9 @@ func FindExecutableInPath(command, pathEnv string) (string, bool) {
 		}
 
 		candidate := filepath.Join(dir, command)
-		info, err := os.Stat(candidate)
-		if err != nil {
-			continue
+		if path, ok := isExecutable(candidate); ok {
+			return path, true
 		}
-		if info.IsDir() {
-			continue
-		}
-		if info.Mode()&0111 == 0 {
-			continue
-		}
-
-		return candidate, true
 	}
 
 	return "", false
