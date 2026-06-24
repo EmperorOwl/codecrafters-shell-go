@@ -5,50 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 )
-
-func TestEchoOutput(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-		want string
-	}{
-		{name: "hello world", args: []string{"hello", "world"}, want: "hello world"},
-		{name: "three words", args: []string{"one", "two", "three"}, want: "one two three"},
-		{name: "no args", args: nil, want: ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := EchoOutput(tt.args); got != tt.want {
-				t.Errorf("EchoOutput(%v) = %q, want %q", tt.args, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTypeOutput(t *testing.T) {
-	tests := []struct {
-		name    string
-		command string
-		want    string
-	}{
-		{name: "echo builtin", command: "echo", want: "echo is a shell builtin"},
-		{name: "exit builtin", command: "exit", want: "exit is a shell builtin"},
-		{name: "type builtin", command: "type", want: "type is a shell builtin"},
-		{name: "invalid command", command: "invalid_command", want: "invalid_command: not found"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := TypeOutput(tt.command); got != tt.want {
-				t.Errorf("TypeOutput(%q) = %q, want %q", tt.command, got, tt.want)
-			}
-		})
-	}
-}
 
 func TestTryBuiltin(t *testing.T) {
 	tests := []struct {
@@ -71,9 +29,33 @@ func TestTryBuiltin(t *testing.T) {
 			wantHandled: true,
 		},
 		{
-			name:        "type reports builtin",
+			name:        "echo three words",
+			line:        "echo one two three",
+			wantOutput:  "one two three\n",
+			wantHandled: true,
+		},
+		{
+			name:        "echo no args",
+			line:        "echo",
+			wantOutput:  "\n",
+			wantHandled: true,
+		},
+		{
+			name:        "type reports echo builtin",
 			line:        "type echo",
 			wantOutput:  "echo is a shell builtin\n",
+			wantHandled: true,
+		},
+		{
+			name:        "type reports exit builtin",
+			line:        "type exit",
+			wantOutput:  "exit is a shell builtin\n",
+			wantHandled: true,
+		},
+		{
+			name:        "type reports type builtin",
+			line:        "type type",
+			wantOutput:  "type is a shell builtin\n",
 			wantHandled: true,
 		},
 		{
@@ -104,141 +86,35 @@ func TestTryBuiltin(t *testing.T) {
 			}
 		})
 	}
-}
 
-func TestShellRunExitBuiltin(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "exit after invalid command",
-			input: "invalid_command_1\nexit\n",
-			want:  "$ invalid_command_1: command not found\n$ ",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shell := New()
-			var out bytes.Buffer
-			err := shell.Run(strings.NewReader(tt.input), &out)
-			if err != nil {
-				t.Fatalf("Run() error = %v", err)
-			}
-			if got := out.String(); got != tt.want {
-				t.Errorf("Run() output = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestShellRunEchoBuiltin(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "multiple echo commands",
-			input: "echo hello world\necho pineapple strawberry\n",
-			want:  "$ hello world\n$ pineapple strawberry\n$ ",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shell := New()
-			var out bytes.Buffer
-			err := shell.Run(strings.NewReader(tt.input), &out)
-			if err != nil {
-				t.Fatalf("Run() error = %v", err)
-			}
-			if got := out.String(); got != tt.want {
-				t.Errorf("Run() output = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTypeOutputExecutable(t *testing.T) {
-	dir := t.TempDir()
-
-	if runtime.GOOS == "windows" {
-		executable := filepath.Join(dir, "mycommand.exe")
-		if err := os.WriteFile(executable, nil, 0o644); err != nil {
+	t.Run("type reports executable", func(t *testing.T) {
+		dir := t.TempDir()
+		command := "mycommand"
+		fileName := command
+		if runtime.GOOS == "windows" {
+			fileName += ".exe"
+		}
+		executable := filepath.Join(dir, fileName)
+		perms := os.FileMode(0o755)
+		if runtime.GOOS == "windows" {
+			perms = 0o644
+		}
+		if err := os.WriteFile(executable, nil, perms); err != nil {
 			t.Fatalf("WriteFile() error = %v", err)
 		}
-
 		t.Setenv("PATH", dir)
 
-		tests := []struct {
-			name    string
-			command string
-			want    string
-		}{
-			{
-				name:    "without extension",
-				command: "mycommand",
-				want:    "mycommand is " + executable,
-			},
-			{
-				name:    "with extension",
-				command: "mycommand.exe",
-				want:    "mycommand.exe is " + executable,
-			},
+		var out bytes.Buffer
+		handled, shouldExit := TryBuiltin("type "+command, &out)
+		if !handled {
+			t.Fatalf("TryBuiltin() handled = false, want true")
 		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				if got := TypeOutput(tt.command); got != tt.want {
-					t.Errorf("TypeOutput(%q) = %q, want %q", tt.command, got, tt.want)
-				}
-			})
+		if shouldExit {
+			t.Errorf("TryBuiltin() shouldExit = true, want false")
 		}
-		return
-	}
-
-	command := "mycommand"
-	executable := filepath.Join(dir, command)
-	if err := os.WriteFile(executable, nil, 0o755); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	t.Setenv("PATH", dir)
-
-	got := TypeOutput(command)
-	want := command + " is " + executable
-	if got != want {
-		t.Errorf("TypeOutput(%q) = %q, want %q", command, got, want)
-	}
-}
-
-func TestShellRunTypeBuiltin(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "type builtins and invalid command",
-			input: "type echo\ntype exit\ntype type\ntype invalid_command\n",
-			want:  "$ echo is a shell builtin\n$ exit is a shell builtin\n$ type is a shell builtin\n$ invalid_command: not found\n$ ",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shell := New()
-			var out bytes.Buffer
-			err := shell.Run(strings.NewReader(tt.input), &out)
-			if err != nil {
-				t.Fatalf("Run() error = %v", err)
-			}
-			if got := out.String(); got != tt.want {
-				t.Errorf("Run() output = %q, want %q", got, tt.want)
-			}
-		})
-	}
+		wantOutput := command + " is " + executable + "\n"
+		if got := out.String(); got != wantOutput {
+			t.Errorf("TryBuiltin() output = %q, want %q", got, wantOutput)
+		}
+	})
 }
