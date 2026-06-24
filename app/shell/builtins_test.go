@@ -26,6 +26,27 @@ func TestEchoOutput(t *testing.T) {
 	}
 }
 
+func TestTypeOutput(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		want    string
+	}{
+		{name: "echo builtin", command: "echo", want: "echo is a shell builtin"},
+		{name: "exit builtin", command: "exit", want: "exit is a shell builtin"},
+		{name: "type builtin", command: "type", want: "type is a shell builtin"},
+		{name: "invalid command", command: "invalid_command", want: "invalid_command: not found"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := TypeOutput(tt.command); got != tt.want {
+				t.Errorf("TypeOutput(%q) = %q, want %q", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTryBuiltin(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -44,6 +65,18 @@ func TestTryBuiltin(t *testing.T) {
 			name:        "echo prints arguments",
 			line:        "echo hello world",
 			wantOutput:  "hello world\n",
+			wantHandled: true,
+		},
+		{
+			name:        "type reports builtin",
+			line:        "type echo",
+			wantOutput:  "echo is a shell builtin\n",
+			wantHandled: true,
+		},
+		{
+			name:        "type reports not found",
+			line:        "type invalid_command",
+			wantOutput:  "invalid_command: not found\n",
 			wantHandled: true,
 		},
 		{
@@ -108,6 +141,34 @@ func TestShellRunEchoBuiltin(t *testing.T) {
 			name:  "multiple echo commands",
 			input: "echo hello world\necho pineapple strawberry\n",
 			want:  "$ hello world\n$ pineapple strawberry\n$ ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shell := New()
+			var out bytes.Buffer
+			err := shell.Run(strings.NewReader(tt.input), &out)
+			if err != nil {
+				t.Fatalf("Run() error = %v", err)
+			}
+			if got := out.String(); got != tt.want {
+				t.Errorf("Run() output = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShellRunTypeBuiltin(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "type builtins and invalid command",
+			input: "type echo\ntype exit\ntype type\ntype invalid_command\n",
+			want:  "$ echo is a shell builtin\n$ exit is a shell builtin\n$ type is a shell builtin\n$ invalid_command: not found\n$ ",
 		},
 	}
 
