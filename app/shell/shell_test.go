@@ -6,31 +6,17 @@ import (
 	"testing"
 )
 
-func TestCommandNotFoundMessage(t *testing.T) {
-	tests := []struct {
-		name    string
-		command string
-		want    string
-	}{
-		{name: "simple command", command: "xyz", want: "xyz: command not found"},
-		{name: "command with path", command: "bin/cmd", want: "bin/cmd: command not found"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := CommandNotFoundMessage(tt.command); got != tt.want {
-				t.Errorf("CommandNotFoundMessage(%q) = %q, want %q", tt.command, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestShellRunInvalidCommand(t *testing.T) {
+func TestShellRun(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
 		want  string
 	}{
+		{
+			name:  "echo builtin",
+			input: "echo hello\n",
+			want:  "$ hello\n$ ",
+		},
 		{
 			name:  "unknown command",
 			input: "xyz\n",

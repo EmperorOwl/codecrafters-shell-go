@@ -9,8 +9,14 @@ import (
 
 type Shell struct{}
 
+const Prompt = "$ "
+
 func New() *Shell {
 	return &Shell{}
+}
+
+func WritePrompt(w io.Writer) {
+	io.WriteString(w, Prompt)
 }
 
 func CommandNotFoundMessage(command string) string {
