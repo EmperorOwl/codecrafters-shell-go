@@ -28,7 +28,20 @@ func Tokenize(line string) []string {
 				current.WriteRune(r)
 			}
 		case inDoubleQuote:
-			if r == doubleQuote {
+			if r == backslash {
+				if i+1 < len(runes) {
+					next := runes[i+1]
+					switch next {
+					case doubleQuote, backslash:
+						i++
+						current.WriteRune(next)
+					default:
+						current.WriteRune(r)
+					}
+				} else {
+					current.WriteRune(r)
+				}
+			} else if r == doubleQuote {
 				inDoubleQuote = false
 			} else {
 				current.WriteRune(r)

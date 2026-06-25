@@ -118,6 +118,41 @@ func TestTokenize(t *testing.T) {
 			input: `cat /tmp/just_one_\\3`,
 			want:  []string{"cat", `/tmp/just_one_\3`},
 		},
+		{
+			name:  "literal backslash before non-special char in double quotes",
+			input: `echo "A \ escapes itself"`,
+			want:  []string{"echo", `A \ escapes itself`},
+		},
+		{
+			name:  "escaped double quote inside double quotes",
+			input: `echo "A \" inside double quotes"`,
+			want:  []string{"echo", `A " inside double quotes`},
+		},
+		{
+			name:  "literal backslash-n inside double quotes",
+			input: `echo "just'one'\n'backslash"`,
+			want:  []string{"echo", `just'one'\n'backslash`},
+		},
+		{
+			name:  "escaped quotes inside and outside quoted segments",
+			input: `echo "inside\"literal_quote."outside\"`,
+			want:  []string{"echo", `inside"literal_quote.outside"`},
+		},
+		{
+			name:  "quoted path with space",
+			input: `cat /tmp/"number 1"`,
+			want:  []string{"cat", `/tmp/number 1`},
+		},
+		{
+			name:  "quoted path with escaped double quote",
+			input: `cat /tmp/"doublequote \" 2"`,
+			want:  []string{"cat", `/tmp/doublequote " 2`},
+		},
+		{
+			name:  "quoted path with literal backslash",
+			input: `cat /tmp/"backslash \ 3"`,
+			want:  []string{"cat", `/tmp/backslash \ 3`},
+		},
 	}
 
 	for _, tt := range tests {

@@ -42,6 +42,11 @@ func TestShellRun(t *testing.T) {
 			input: "echo multiple\\ \\ \\ \\ spaces\n",
 			want:  "$ multiple    spaces\n$ ",
 		},
+		{
+			name:  "echo with backslashes inside double quotes",
+			input: `echo "inside\"literal_quote."outside\"` + "\n",
+			want:  "$ inside\"literal_quote.outside\"\n$ ",
+		},
 	}
 
 	for _, tt := range tests {
