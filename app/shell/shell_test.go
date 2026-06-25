@@ -2,11 +2,16 @@ package shell
 
 import (
 	"bytes"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestShellRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "output.txt")
+
 	tests := []struct {
 		name  string
 		input string
@@ -46,6 +51,11 @@ func TestShellRun(t *testing.T) {
 			name:  "echo with backslashes inside double quotes",
 			input: `echo "inside\"literal_quote."outside\"` + "\n",
 			want:  "$ inside\"literal_quote.outside\"\n$ ",
+		},
+		{
+			name:  "echo redirects stdout to file",
+			input: fmt.Sprintf("echo hello > %q\ncat %q\n", outputFile, outputFile),
+			want:  "$ $ hello\n$ ",
 		},
 	}
 

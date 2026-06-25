@@ -2,8 +2,11 @@ package shell
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
@@ -44,9 +47,22 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		fields := parser.Tokenize(line)
+		fields, stdoutRedirect := parser.ParseRedirect(parser.Tokenize(line))
+		if len(fields) == 0 {
+			if err == io.EOF {
+				return nil
+			}
+			continue
+		}
+
 		command := fields[0]
-		if handled, shouldExit := TryBuiltin(fields, out); handled {
+		stdout, closeStdout, redirectErr := openStdout(out, stdoutRedirect)
+		if redirectErr != nil {
+			return redirectErr
+		}
+
+		if handled, shouldExit := TryBuiltin(fields, stdout); handled {
+			closeStdout()
 			if shouldExit {
 				return nil
 			}
@@ -56,9 +72,11 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		if executed, err := ExecuteExternalProgram(fields); executed {
-			if err != nil {
-				return err
+		if executed, execErr := ExecuteExternalProgram(fields, stdout); executed {
+			closeStdout()
+			var exitErr *exec.ExitError
+			if execErr != nil && !errors.As(execErr, &exitErr) {
+				return execErr
 			}
 			if err == io.EOF {
 				return nil
@@ -66,10 +84,24 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
+		closeStdout()
 		fmt.Fprintf(out, "%s\n", CommandNotFoundMessage(command))
 
 		if err == io.EOF {
 			return nil
 		}
 	}
+}
+
+func openStdout(out io.Writer, path string) (io.Writer, func(), error) {
+	if path == "" {
+		return out, func() {}, nil
+	}
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return nil, func() {}, err
+	}
+
+	return file, func() { file.Close() }, nil
 }
