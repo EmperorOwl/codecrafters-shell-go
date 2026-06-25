@@ -27,6 +27,13 @@ func TestNewExternalCommand(t *testing.T) {
 			wantArgs:        []string{"custom_exe"},
 			wantProgramPath: "/usr/local/bin/custom_exe",
 		},
+		{
+			name:            "quoted program name with spaces",
+			fields:          []string{`exe with "quotes"`, "file"},
+			executablePath:  "/tmp/cow/exe with \"quotes\"",
+			wantArgs:        []string{`exe with "quotes"`, "file"},
+			wantProgramPath: `/tmp/cow/exe with "quotes"`,
+		},
 	}
 
 	for _, tt := range tests {

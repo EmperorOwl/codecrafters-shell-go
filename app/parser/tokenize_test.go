@@ -153,6 +153,26 @@ func TestTokenize(t *testing.T) {
 			input: `cat /tmp/"backslash \ 3"`,
 			want:  []string{"cat", `/tmp/backslash \ 3`},
 		},
+		{
+			name:  "single-quoted executable with spaces",
+			input: `'exe  with  space' /tmp/f1`,
+			want:  []string{"exe  with  space", "/tmp/f1"},
+		},
+		{
+			name:  "single-quoted executable with embedded double quotes",
+			input: `'exe with "quotes"' file`,
+			want:  []string{`exe with "quotes"`, "file"},
+		},
+		{
+			name:  "double-quoted executable with embedded single quotes",
+			input: `"exe with 'single quotes'" file`,
+			want:  []string{"exe with 'single quotes'", "file"},
+		},
+		{
+			name:  "double-quoted executable with escaped backslash",
+			input: `"exe with \\ backslash" /tmp/f4`,
+			want:  []string{`exe with \ backslash`, "/tmp/f4"},
+		},
 	}
 
 	for _, tt := range tests {
