@@ -105,11 +105,11 @@ func TestCd(t *testing.T) {
 
 			t.Chdir(tt.startDir)
 
-			var out bytes.Buffer
-			Cd(&out, tt.directory)
+			var errOut bytes.Buffer
+			Cd(&errOut, tt.directory)
 
-			if got := out.String(); got != tt.wantOutput {
-				t.Errorf("Cd() output = %q, want %q", got, tt.wantOutput)
+			if got := errOut.String(); got != tt.wantOutput {
+				t.Errorf("Cd() stderr = %q, want %q", got, tt.wantOutput)
 			}
 
 			cwd, err := os.Getwd()

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
 func TestShellRun(t *testing.T) {
@@ -15,11 +18,15 @@ func TestShellRun(t *testing.T) {
 	appendFile := filepath.Join(tmpDir, "append.txt")
 	errorsFile := filepath.Join(tmpDir, "errors.txt")
 	appendErrorsFile := filepath.Join(tmpDir, "append-errors.txt")
+	missingDir := "./does_not_exist"
+	cdErr := builtins.CdErrorMessage(missingDir) + "\n"
 
 	tests := []struct {
-		name  string
-		input string
-		want  string
+		name             string
+		input            string
+		want             string
+		wantFilePath     string
+		wantFileContents string
 	}{
 		{
 			name:  "echo builtin",
@@ -57,27 +64,38 @@ func TestShellRun(t *testing.T) {
 			want:  "$ inside\"literal_quote.outside\"\n$ ",
 		},
 		{
-			name:  "echo redirects stdout to file",
-			input: fmt.Sprintf("echo hello > %q\ncat %q\n", outputFile, outputFile),
-			want:  "$ $ hello\n$ ",
+			name:             "echo redirects stdout to file",
+			input:            fmt.Sprintf("echo hello > %q\n", outputFile),
+			want:             "$ $ ",
+			wantFilePath:     outputFile,
+			wantFileContents: "hello\n",
 		},
 		{
-			name:  "echo with stderr redirect prints to terminal",
-			input: fmt.Sprintf("echo Maria file cannot be found 2> %q\n", errorsFile),
-			want:  "$ Maria file cannot be found\n$ ",
+			name:             "stderr redirect writes errors to file",
+			input:            fmt.Sprintf("cd %s 2> %q\n", missingDir, errorsFile),
+			want:             "$ $ ",
+			wantFilePath:     errorsFile,
+			wantFileContents: cdErr,
 		},
 		{
 			name: "echo appends stdout to file",
 			input: fmt.Sprintf(
-				"echo first >> %q\necho second >> %q\ncat %q\n",
-				appendFile, appendFile, appendFile,
+				"echo first >> %q\necho second >> %q\n",
+				appendFile, appendFile,
 			),
-			want: "$ $ $ first\nsecond\n$ ",
+			want:             "$ $ $ ",
+			wantFilePath:     appendFile,
+			wantFileContents: "first\nsecond\n",
 		},
 		{
-			name:  "echo with stderr append redirect prints to terminal",
-			input: fmt.Sprintf("echo James says Error 2>> %q\n", appendErrorsFile),
-			want:  "$ James says Error\n$ ",
+			name: "stderr append redirect writes errors to file",
+			input: fmt.Sprintf(
+				"cd %s 2>> %q\ncd %s 2>> %q\n",
+				missingDir, appendErrorsFile, missingDir, appendErrorsFile,
+			),
+			want:             "$ $ $ ",
+			wantFilePath:     appendErrorsFile,
+			wantFileContents: cdErr + cdErr,
 		},
 	}
 
@@ -91,6 +109,15 @@ func TestShellRun(t *testing.T) {
 			}
 			if got := out.String(); got != tt.want {
 				t.Errorf("Run() output = %q, want %q", got, tt.want)
+			}
+			if tt.wantFilePath != "" {
+				content, err := os.ReadFile(tt.wantFilePath)
+				if err != nil {
+					t.Fatalf("ReadFile(%q) error = %v", tt.wantFilePath, err)
+				}
+				if string(content) != tt.wantFileContents {
+					t.Errorf("file %q content = %q, want %q", tt.wantFilePath, content, tt.wantFileContents)
+				}
 			}
 		})
 	}

@@ -48,7 +48,8 @@ func TestTryBuiltin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			handled, shouldExit := TryBuiltin(tt.fields, &out)
+			var errOut bytes.Buffer
+			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut)
 			if handled != tt.wantHandled {
 				t.Errorf("TryBuiltin(%v) handled = %v, want %v", tt.fields, handled, tt.wantHandled)
 			}

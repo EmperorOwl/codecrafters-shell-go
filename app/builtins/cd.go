@@ -21,16 +21,16 @@ func ResolveDirectory(directory string) string {
 	return directory
 }
 
-func Cd(out io.Writer, directory string) {
+func Cd(stderr io.Writer, directory string) {
 	if directory == "" {
 		return
 	}
 	target := ResolveDirectory(directory)
 	if target == "" {
-		fmt.Fprintln(out, CdErrorMessage(directory))
+		fmt.Fprintln(stderr, CdErrorMessage(directory))
 		return
 	}
 	if err := ChangeDirectory(target); err != nil {
-		fmt.Fprintln(out, CdErrorMessage(directory))
+		fmt.Fprintln(stderr, CdErrorMessage(directory))
 	}
 }

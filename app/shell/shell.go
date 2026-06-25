@@ -71,7 +71,7 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 			closeStderr()
 		}
 
-		if handled, shouldExit := TryBuiltin(fields, stdout); handled {
+		if handled, shouldExit := TryBuiltin(fields, stdout, stderr); handled {
 			closeRedirects()
 			if shouldExit {
 				return nil
@@ -109,15 +109,22 @@ func openRedirect(defaultWriter io.Writer, path string, shouldAppend bool) (io.W
 	}
 
 	flags := os.O_CREATE | os.O_WRONLY
-	if shouldAppend {
-		flags |= os.O_APPEND
-	} else {
+	if !shouldAppend {
 		flags |= os.O_TRUNC
 	}
 
 	file, err := os.OpenFile(path, flags, 0644)
 	if err != nil {
 		return nil, func() {}, err
+	}
+
+	if shouldAppend {
+		// Seek to end instead of O_APPEND: on Windows, O_APPEND files do not
+		// receive writes when passed to exec.Cmd.Stderr.
+		if _, err := file.Seek(0, io.SeekEnd); err != nil {
+			file.Close()
+			return nil, func() {}, err
+		}
 	}
 
 	return file, func() { file.Close() }, nil

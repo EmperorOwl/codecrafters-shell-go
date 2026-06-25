@@ -19,7 +19,7 @@ func IsShellBuiltin(command string) bool {
 	return ok
 }
 
-func TryBuiltin(fields []string, out io.Writer) (handled bool, shouldExit bool) {
+func TryBuiltin(fields []string, stdout, stderr io.Writer) (handled bool, shouldExit bool) {
 	if len(fields) == 0 {
 		return false, false
 	}
@@ -28,24 +28,24 @@ func TryBuiltin(fields []string, out io.Writer) (handled bool, shouldExit bool) 
 	case "exit":
 		return true, builtins.Exit()
 	case "echo":
-		builtins.Echo(out, fields[1:])
+		builtins.Echo(stdout, fields[1:])
 		return true, false
 	case "pwd":
-		builtins.Pwd(out)
+		builtins.Pwd(stdout)
 		return true, false
 	case "cd":
 		directory := ""
 		if len(fields) > 1 {
 			directory = fields[1]
 		}
-		builtins.Cd(out, directory)
+		builtins.Cd(stderr, directory)
 		return true, false
 	case "type":
 		target := ""
 		if len(fields) > 1 {
 			target = fields[1]
 		}
-		builtins.Type(out, target, IsShellBuiltin(target))
+		builtins.Type(stdout, target, IsShellBuiltin(target))
 		return true, false
 	default:
 		return false, false
