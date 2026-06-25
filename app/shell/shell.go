@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
 type Shell struct{}
@@ -42,9 +44,9 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		fields := strings.Fields(line)
+		fields := parser.Tokenize(line)
 		command := fields[0]
-		if handled, shouldExit := TryBuiltin(line, out); handled {
+		if handled, shouldExit := TryBuiltin(fields, out); handled {
 			if shouldExit {
 				return nil
 			}

@@ -8,39 +8,39 @@ import (
 func TestTryBuiltin(t *testing.T) {
 	tests := []struct {
 		name        string
-		line        string
+		fields      []string
 		wantHandled bool
 		wantExit    bool
 	}{
 		{
 			name:        "exit terminates shell",
-			line:        "exit",
+			fields:      []string{"exit"},
 			wantHandled: true,
 			wantExit:    true,
 		},
 		{
 			name:        "echo is handled",
-			line:        "echo hello world",
+			fields:      []string{"echo", "hello", "world"},
 			wantHandled: true,
 		},
 		{
 			name:        "pwd is handled",
-			line:        "pwd",
+			fields:      []string{"pwd"},
 			wantHandled: true,
 		},
 		{
 			name:        "cd is handled",
-			line:        "cd /tmp",
+			fields:      []string{"cd", "/tmp"},
 			wantHandled: true,
 		},
 		{
 			name:        "type is handled",
-			line:        "type echo",
+			fields:      []string{"type", "echo"},
 			wantHandled: true,
 		},
 		{
 			name:        "unknown command is not builtin",
-			line:        "xyz",
+			fields:      []string{"xyz"},
 			wantHandled: false,
 		},
 	}
@@ -48,12 +48,12 @@ func TestTryBuiltin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			handled, shouldExit := TryBuiltin(tt.line, &out)
+			handled, shouldExit := TryBuiltin(tt.fields, &out)
 			if handled != tt.wantHandled {
-				t.Errorf("TryBuiltin(%q) handled = %v, want %v", tt.line, handled, tt.wantHandled)
+				t.Errorf("TryBuiltin(%v) handled = %v, want %v", tt.fields, handled, tt.wantHandled)
 			}
 			if shouldExit != tt.wantExit {
-				t.Errorf("TryBuiltin(%q) shouldExit = %v, want %v", tt.line, shouldExit, tt.wantExit)
+				t.Errorf("TryBuiltin(%v) shouldExit = %v, want %v", tt.fields, shouldExit, tt.wantExit)
 			}
 		})
 	}

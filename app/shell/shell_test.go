@@ -27,6 +27,11 @@ func TestShellRun(t *testing.T) {
 			input: "xyz\n",
 			want:  "$ xyz: command not found\n$ ",
 		},
+		{
+			name:  "echo with single-quoted spaces",
+			input: "echo 'world     test'\n",
+			want:  "$ world     test\n$ ",
+		},
 	}
 
 	for _, tt := range tests {

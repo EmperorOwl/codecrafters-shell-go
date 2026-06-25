@@ -2,7 +2,6 @@ package shell
 
 import (
 	"io"
-	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
@@ -20,8 +19,7 @@ func IsShellBuiltin(command string) bool {
 	return ok
 }
 
-func TryBuiltin(line string, out io.Writer) (handled bool, shouldExit bool) {
-	fields := strings.Fields(line)
+func TryBuiltin(fields []string, out io.Writer) (handled bool, shouldExit bool) {
 	if len(fields) == 0 {
 		return false, false
 	}
