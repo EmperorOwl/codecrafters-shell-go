@@ -73,9 +73,6 @@ codecrafters test
 
 When both test suites pass, stop coding and report:
 
-- **Status** — one sentence summarising where you are. Adapt to what actually happened, e.g.:
-  - `Plan skipped · code done · local tests passed · codecrafters tests passed · waiting for your review.`
-  - `Plan approved · code done · local tests passed · codecrafters tests passed · waiting for your review.`
 - Brief summary of what was implemented.
 - Files changed.
 - Test results (`go test ./...` and `codecrafters test`).
