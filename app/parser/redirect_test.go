@@ -7,11 +7,12 @@ import (
 
 func TestParseRedirect(t *testing.T) {
 	tests := []struct {
-		name           string
-		tokens         []string
-		wantFields     []string
-		wantStdoutPath string
-		wantStderrPath string
+		name             string
+		tokens           []string
+		wantFields       []string
+		wantStdoutPath   string
+		wantStdoutAppend bool
+		wantStderrPath   string
 	}{
 		{
 			name:       "no redirect",
@@ -60,21 +61,37 @@ func TestParseRedirect(t *testing.T) {
 			wantStderrPath: "/tmp/quz/quz.md",
 		},
 		{
-			name:           "echo with stderr redirect leaves args intact",
-			tokens:         []string{"echo", "Maria", "file", "cannot", "be", "found", "2>", "/tmp/quz/foo.md"},
-			wantFields:     []string{"echo", "Maria", "file", "cannot", "be", "found"},
-			wantStderrPath: "/tmp/quz/foo.md",
+			name:             "stdout append redirect",
+			tokens:           []string{"echo", "Hello", "Emily", "1>>", "/tmp/bar/baz.md"},
+			wantFields:       []string{"echo", "Hello", "Emily"},
+			wantStdoutPath:   "/tmp/bar/baz.md",
+			wantStdoutAppend: true,
+		},
+		{
+			name:             "external command with append redirect",
+			tokens:           []string{"ls", "/tmp/baz", ">>", "/tmp/bar/bar.md"},
+			wantFields:       []string{"ls", "/tmp/baz"},
+			wantStdoutPath:   "/tmp/bar/bar.md",
+			wantStdoutAppend: true,
+		},
+		{
+			name:       "double greater than inside token is not redirect",
+			tokens:     []string{"echo", "a>>b"},
+			wantFields: []string{"echo", "a>>b"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFields, gotStdoutPath, gotStderrPath := ParseRedirect(tt.tokens)
+			gotFields, gotStdoutPath, gotStdoutAppend, gotStderrPath := ParseRedirect(tt.tokens)
 			if !reflect.DeepEqual(gotFields, tt.wantFields) {
 				t.Errorf("ParseRedirect() fields = %v, want %v", gotFields, tt.wantFields)
 			}
 			if gotStdoutPath != tt.wantStdoutPath {
 				t.Errorf("ParseRedirect() stdoutPath = %q, want %q", gotStdoutPath, tt.wantStdoutPath)
+			}
+			if gotStdoutAppend != tt.wantStdoutAppend {
+				t.Errorf("ParseRedirect() stdoutAppend = %v, want %v", gotStdoutAppend, tt.wantStdoutAppend)
 			}
 			if gotStderrPath != tt.wantStderrPath {
 				t.Errorf("ParseRedirect() stderrPath = %q, want %q", gotStderrPath, tt.wantStderrPath)

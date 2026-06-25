@@ -12,6 +12,7 @@ import (
 func TestShellRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "output.txt")
+	appendFile := filepath.Join(tmpDir, "append.txt")
 	errorsFile := filepath.Join(tmpDir, "errors.txt")
 
 	tests := []struct {
@@ -63,6 +64,14 @@ func TestShellRun(t *testing.T) {
 			name:  "echo with stderr redirect prints to terminal",
 			input: fmt.Sprintf("echo Maria file cannot be found 2> %q\n", errorsFile),
 			want:  "$ Maria file cannot be found\n$ ",
+		},
+		{
+			name: "echo appends stdout to file",
+			input: fmt.Sprintf(
+				"echo first >> %q\necho second >> %q\ncat %q\n",
+				appendFile, appendFile, appendFile,
+			),
+			want: "$ $ $ first\nsecond\n$ ",
 		},
 	}
 

@@ -48,7 +48,7 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 			continue
 		}
 
-		fields, stdoutRedirect, stderrRedirect := parser.ParseRedirect(parser.Tokenize(line))
+		fields, stdoutRedirect, stdoutAppend, stderrRedirect := parser.ParseRedirect(parser.Tokenize(line))
 		if len(fields) == 0 {
 			if err == io.EOF {
 				return nil
@@ -57,11 +57,11 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 		}
 
 		command := fields[0]
-		stdout, closeStdout, redirectErr := openRedirect(out, stdoutRedirect)
+		stdout, closeStdout, redirectErr := openRedirect(out, stdoutRedirect, stdoutAppend)
 		if redirectErr != nil {
 			return redirectErr
 		}
-		stderr, closeStderr, redirectErr := openRedirect(stderrOut, stderrRedirect)
+		stderr, closeStderr, redirectErr := openRedirect(stderrOut, stderrRedirect, false)
 		if redirectErr != nil {
 			closeStdout()
 			return redirectErr
@@ -103,12 +103,19 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 	}
 }
 
-func openRedirect(defaultWriter io.Writer, path string) (io.Writer, func(), error) {
+func openRedirect(defaultWriter io.Writer, path string, shouldAppend bool) (io.Writer, func(), error) {
 	if path == "" {
 		return defaultWriter, func() {}, nil
 	}
 
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	flags := os.O_CREATE | os.O_WRONLY
+	if shouldAppend {
+		flags |= os.O_APPEND
+	} else {
+		flags |= os.O_TRUNC
+	}
+
+	file, err := os.OpenFile(path, flags, 0644)
 	if err != nil {
 		return nil, func() {}, err
 	}
