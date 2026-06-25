@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -11,63 +12,56 @@ const (
 	backslash   = '\\'
 )
 
+var backslashInDoubleQuotesEscapes = []rune{
+	doubleQuote, backslash, '$', '`', '\n',
+}
+
 func Tokenize(line string) []string {
-	runes := []rune(line)
 	var tokens []string
 	var current strings.Builder
-	inSingleQuote := false
-	inDoubleQuote := false
+	inDoubleQuotes := false
+	inSingleQuotes := false
+	escaping := false
 
-	for i := 0; i < len(runes); i++ {
-		r := runes[i]
+	handleTokenDone := func() {
+		if current.Len() == 0 {
+			return
+		}
+		tokens = append(tokens, current.String())
+		current.Reset()
+		inDoubleQuotes = false
+		inSingleQuotes = false
+		escaping = false
+	}
+
+	for _, r := range line {
+		if escaping {
+			if inDoubleQuotes && !slices.Contains(backslashInDoubleQuotesEscapes, r) {
+				current.WriteRune(backslash)
+			}
+			current.WriteRune(r)
+			escaping = false
+			continue
+		}
+
 		switch {
-		case inSingleQuote:
-			if r == singleQuote {
-				inSingleQuote = false
-			} else {
-				current.WriteRune(r)
-			}
-		case inDoubleQuote:
-			if r == backslash {
-				if i+1 < len(runes) {
-					next := runes[i+1]
-					switch next {
-					case doubleQuote, backslash:
-						i++
-						current.WriteRune(next)
-					default:
-						current.WriteRune(r)
-					}
-				} else {
-					current.WriteRune(r)
-				}
-			} else if r == doubleQuote {
-				inDoubleQuote = false
-			} else {
-				current.WriteRune(r)
-			}
-		case r == backslash:
-			if i+1 < len(runes) {
-				i++
-				current.WriteRune(runes[i])
-			}
-		case r == singleQuote:
-			inSingleQuote = true
-		case r == doubleQuote:
-			inDoubleQuote = true
-		case unicode.IsSpace(r):
-			if current.Len() > 0 {
-				tokens = append(tokens, current.String())
-				current.Reset()
-			}
+		case r == doubleQuote && !inSingleQuotes:
+			inDoubleQuotes = !inDoubleQuotes
+
+		case r == singleQuote && !inDoubleQuotes:
+			inSingleQuotes = !inSingleQuotes
+
+		case r == backslash && !inSingleQuotes:
+			escaping = true
+
+		case unicode.IsSpace(r) && !inDoubleQuotes && !inSingleQuotes:
+			handleTokenDone()
+
 		default:
 			current.WriteRune(r)
 		}
 	}
 
-	if current.Len() > 0 {
-		tokens = append(tokens, current.String())
-	}
-
+	handleTokenDone()
 	return tokens
 }
