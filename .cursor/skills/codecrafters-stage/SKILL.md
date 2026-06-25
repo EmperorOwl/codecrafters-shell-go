@@ -118,12 +118,6 @@ The user marks the stage complete in the CodeCrafters browser UI.
 
 When the user invokes **/next-stage** (or `/codecrafters-stage`), start again at **step 1** for the next stage.
 
-## Follow-up work (refactors, fixes, off-skill requests)
-
-When the user requests changes **without** invoking this skill — refactors, test tweaks, review feedback, etc. — still follow the same coding and testing standards, and **always end with a suggested Conventional Commits message**, even if you are not at step 7 of a full stage run.
-
-That way, when the user says they are ready to commit, the commit message is already agreed and visible in the conversation.
-
 ## Project layout reference
 
 | Path | Purpose |
