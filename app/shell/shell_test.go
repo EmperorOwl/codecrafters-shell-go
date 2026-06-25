@@ -32,6 +32,11 @@ func TestShellRun(t *testing.T) {
 			input: "echo 'world     test'\n",
 			want:  "$ world     test\n$ ",
 		},
+		{
+			name:  "echo with double-quoted arguments",
+			input: `echo "bar"  "shell's"  "foo"` + "\n",
+			want:  "$ bar shell's foo\n$ ",
+		},
 	}
 
 	for _, tt := range tests {

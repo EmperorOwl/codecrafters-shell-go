@@ -43,6 +43,41 @@ func TestTokenize(t *testing.T) {
 			input: "echo '$HOME * ~'",
 			want:  []string{"echo", "$HOME * ~"},
 		},
+		{
+			name:  "spaces preserved in double quotes",
+			input: `echo "hello    world"`,
+			want:  []string{"echo", "hello    world"},
+		},
+		{
+			name:  "adjacent double-quoted strings concatenate",
+			input: `echo "hello""world"`,
+			want:  []string{"echo", "helloworld"},
+		},
+		{
+			name:  "quoted and unquoted strings concatenate",
+			input: `echo "hello"world`,
+			want:  []string{"echo", "helloworld"},
+		},
+		{
+			name:  "separate double-quoted arguments",
+			input: `echo "hello" "world"`,
+			want:  []string{"echo", "hello", "world"},
+		},
+		{
+			name:  "single quotes literal inside double quotes",
+			input: `echo "shell's test"`,
+			want:  []string{"echo", "shell's test"},
+		},
+		{
+			name:  "quoted file paths with mixed quotes for cat",
+			input: `cat "/tmp/file name" "/tmp/'file name' with spaces"`,
+			want:  []string{"cat", "/tmp/file name", "/tmp/'file name' with spaces"},
+		},
+		{
+			name:  "multiple double-quoted arguments with internal spaces",
+			input: `echo "quz  hello"  "bar"`,
+			want:  []string{"echo", "quz  hello", "bar"},
+		},
 	}
 
 	for _, tt := range tests {
