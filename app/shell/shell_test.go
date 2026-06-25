@@ -14,6 +14,7 @@ func TestShellRun(t *testing.T) {
 	outputFile := filepath.Join(tmpDir, "output.txt")
 	appendFile := filepath.Join(tmpDir, "append.txt")
 	errorsFile := filepath.Join(tmpDir, "errors.txt")
+	appendErrorsFile := filepath.Join(tmpDir, "append-errors.txt")
 
 	tests := []struct {
 		name  string
@@ -72,6 +73,11 @@ func TestShellRun(t *testing.T) {
 				appendFile, appendFile, appendFile,
 			),
 			want: "$ $ $ first\nsecond\n$ ",
+		},
+		{
+			name:  "echo with stderr append redirect prints to terminal",
+			input: fmt.Sprintf("echo James says Error 2>> %q\n", appendErrorsFile),
+			want:  "$ James says Error\n$ ",
 		},
 	}
 

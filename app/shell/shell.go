@@ -48,7 +48,7 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 			continue
 		}
 
-		fields, stdoutRedirect, stdoutAppend, stderrRedirect := parser.ParseRedirect(parser.Tokenize(line))
+		fields, stdoutRedirect, stdoutAppend, stderrRedirect, stderrAppend := parser.ParseRedirect(parser.Tokenize(line))
 		if len(fields) == 0 {
 			if err == io.EOF {
 				return nil
@@ -61,7 +61,7 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 		if redirectErr != nil {
 			return redirectErr
 		}
-		stderr, closeStderr, redirectErr := openRedirect(stderrOut, stderrRedirect, false)
+		stderr, closeStderr, redirectErr := openRedirect(stderrOut, stderrRedirect, stderrAppend)
 		if redirectErr != nil {
 			closeStdout()
 			return redirectErr

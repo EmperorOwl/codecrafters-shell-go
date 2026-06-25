@@ -6,11 +6,12 @@ const (
 	stdoutAppendRedirectOp     = ">>"
 	stdoutAppendRedirectOpLong = "1>>"
 	stderrRedirectOp           = "2>"
+	stderrAppendRedirectOp     = "2>>"
 )
 
 // ParseRedirect splits tokenized command arguments from optional stdout and stderr redirects.
-// It recognizes >, 1>, >>, 1>>, and 2> followed by a path token.
-func ParseRedirect(tokens []string) (fields []string, stdoutPath string, stdoutAppend bool, stderrPath string) {
+// It recognizes >, 1>, >>, 1>>, 2>, and 2>> followed by a path token.
+func ParseRedirect(tokens []string) (fields []string, stdoutPath string, stdoutAppend bool, stderrPath string, stderrAppend bool) {
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i] {
 		case stdoutAppendRedirectOp, stdoutAppendRedirectOpLong:
@@ -24,6 +25,12 @@ func ParseRedirect(tokens []string) (fields []string, stdoutPath string, stdoutA
 				stdoutPath = tokens[i+1]
 				i++
 			}
+		case stderrAppendRedirectOp:
+			if i+1 < len(tokens) {
+				stderrPath = tokens[i+1]
+				stderrAppend = true
+				i++
+			}
 		case stderrRedirectOp:
 			if i+1 < len(tokens) {
 				stderrPath = tokens[i+1]
@@ -33,5 +40,5 @@ func ParseRedirect(tokens []string) (fields []string, stdoutPath string, stdoutA
 			fields = append(fields, tokens[i])
 		}
 	}
-	return fields, stdoutPath, stdoutAppend, stderrPath
+	return fields, stdoutPath, stdoutAppend, stderrPath, stderrAppend
 }
