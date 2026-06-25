@@ -78,6 +78,46 @@ func TestTokenize(t *testing.T) {
 			input: `echo "quz  hello"  "bar"`,
 			want:  []string{"echo", "quz  hello", "bar"},
 		},
+		{
+			name:  "escaped spaces form one argument",
+			input: `echo three\ \ \ spaces`,
+			want:  []string{"echo", "three   spaces"},
+		},
+		{
+			name:  "escaped space then unescaped spaces split arguments",
+			input: `echo before\     after`,
+			want:  []string{"echo", "before ", "after"},
+		},
+		{
+			name:  "backslash escapes regular letter",
+			input: `echo test\nexample`,
+			want:  []string{"echo", "testnexample"},
+		},
+		{
+			name:  "backslash escapes backslash",
+			input: `echo hello\\world`,
+			want:  []string{"echo", `hello\world`},
+		},
+		{
+			name:  "escaped single quotes outside quotes",
+			input: `echo \'hello\'`,
+			want:  []string{"echo", `'hello'`},
+		},
+		{
+			name:  "escaped quotes split by unescaped space",
+			input: `echo \'\"literal quotes\"\'`,
+			want:  []string{"echo", `'"literal`, `quotes"'`},
+		},
+		{
+			name:  "escaped digit in path",
+			input: `cat /tmp/ignore_\2`,
+			want:  []string{"cat", "/tmp/ignore_2"},
+		},
+		{
+			name:  "escaped backslash before digit in path",
+			input: `cat /tmp/just_one_\\3`,
+			want:  []string{"cat", `/tmp/just_one_\3`},
+		},
 	}
 
 	for _, tt := range tests {

@@ -8,15 +8,18 @@ import (
 const (
 	singleQuote = '\''
 	doubleQuote = '"'
+	backslash   = '\\'
 )
 
 func Tokenize(line string) []string {
+	runes := []rune(line)
 	var tokens []string
 	var current strings.Builder
 	inSingleQuote := false
 	inDoubleQuote := false
 
-	for _, r := range line {
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
 		switch {
 		case inSingleQuote:
 			if r == singleQuote {
@@ -29,6 +32,11 @@ func Tokenize(line string) []string {
 				inDoubleQuote = false
 			} else {
 				current.WriteRune(r)
+			}
+		case r == backslash:
+			if i+1 < len(runes) {
+				i++
+				current.WriteRune(runes[i])
 			}
 		case r == singleQuote:
 			inSingleQuote = true

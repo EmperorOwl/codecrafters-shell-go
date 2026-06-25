@@ -37,6 +37,11 @@ func TestShellRun(t *testing.T) {
 			input: `echo "bar"  "shell's"  "foo"` + "\n",
 			want:  "$ bar shell's foo\n$ ",
 		},
+		{
+			name:  "echo with escaped spaces",
+			input: "echo multiple\\ \\ \\ \\ spaces\n",
+			want:  "$ multiple    spaces\n$ ",
+		},
 	}
 
 	for _, tt := range tests {
