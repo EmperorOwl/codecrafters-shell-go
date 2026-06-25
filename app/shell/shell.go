@@ -28,7 +28,8 @@ func CommandNotFoundMessage(command string) string {
 	return command + ": command not found"
 }
 
-func (s *Shell) Run(in io.Reader, out io.Writer) error {
+func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
+	stderrOut := err
 	reader := bufio.NewReader(in)
 	for {
 		WritePrompt(out)
@@ -47,7 +48,7 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		fields, stdoutRedirect := parser.ParseRedirect(parser.Tokenize(line))
+		fields, stdoutRedirect, stderrRedirect := parser.ParseRedirect(parser.Tokenize(line))
 		if len(fields) == 0 {
 			if err == io.EOF {
 				return nil
@@ -56,13 +57,22 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 		}
 
 		command := fields[0]
-		stdout, closeStdout, redirectErr := openStdout(out, stdoutRedirect)
+		stdout, closeStdout, redirectErr := openRedirect(out, stdoutRedirect)
 		if redirectErr != nil {
 			return redirectErr
 		}
+		stderr, closeStderr, redirectErr := openRedirect(stderrOut, stderrRedirect)
+		if redirectErr != nil {
+			closeStdout()
+			return redirectErr
+		}
+		closeRedirects := func() {
+			closeStdout()
+			closeStderr()
+		}
 
 		if handled, shouldExit := TryBuiltin(fields, stdout); handled {
-			closeStdout()
+			closeRedirects()
 			if shouldExit {
 				return nil
 			}
@@ -72,8 +82,8 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		if executed, execErr := ExecuteExternalProgram(fields, stdout); executed {
-			closeStdout()
+		if executed, execErr := ExecuteExternalProgram(fields, stdout, stderr); executed {
+			closeRedirects()
 			var exitErr *exec.ExitError
 			if execErr != nil && !errors.As(execErr, &exitErr) {
 				return execErr
@@ -84,7 +94,7 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 			continue
 		}
 
-		closeStdout()
+		closeRedirects()
 		fmt.Fprintf(out, "%s\n", CommandNotFoundMessage(command))
 
 		if err == io.EOF {
@@ -93,9 +103,9 @@ func (s *Shell) Run(in io.Reader, out io.Writer) error {
 	}
 }
 
-func openStdout(out io.Writer, path string) (io.Writer, func(), error) {
+func openRedirect(defaultWriter io.Writer, path string) (io.Writer, func(), error) {
 	if path == "" {
-		return out, func() {}, nil
+		return defaultWriter, func() {}, nil
 	}
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)

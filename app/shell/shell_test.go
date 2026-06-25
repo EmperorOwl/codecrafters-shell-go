@@ -3,6 +3,7 @@ package shell
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 func TestShellRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "output.txt")
+	errorsFile := filepath.Join(tmpDir, "errors.txt")
 
 	tests := []struct {
 		name  string
@@ -57,13 +59,18 @@ func TestShellRun(t *testing.T) {
 			input: fmt.Sprintf("echo hello > %q\ncat %q\n", outputFile, outputFile),
 			want:  "$ $ hello\n$ ",
 		},
+		{
+			name:  "echo with stderr redirect prints to terminal",
+			input: fmt.Sprintf("echo Maria file cannot be found 2> %q\n", errorsFile),
+			want:  "$ Maria file cannot be found\n$ ",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			shell := New()
 			var out bytes.Buffer
-			err := shell.Run(strings.NewReader(tt.input), &out)
+			err := shell.Run(strings.NewReader(tt.input), &out, io.Discard)
 			if err != nil {
 				t.Fatalf("Run() error = %v", err)
 			}

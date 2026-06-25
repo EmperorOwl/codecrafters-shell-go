@@ -11,6 +11,7 @@ func TestParseRedirect(t *testing.T) {
 		tokens         []string
 		wantFields     []string
 		wantStdoutPath string
+		wantStderrPath string
 	}{
 		{
 			name:       "no redirect",
@@ -46,16 +47,37 @@ func TestParseRedirect(t *testing.T) {
 			tokens:     []string{"echo", "a>b"},
 			wantFields: []string{"echo", "a>b"},
 		},
+		{
+			name:           "stderr redirect",
+			tokens:         []string{"ls", "nonexistent", "2>", "/tmp/quz/baz.md"},
+			wantFields:     []string{"ls", "nonexistent"},
+			wantStderrPath: "/tmp/quz/baz.md",
+		},
+		{
+			name:           "stderr redirect with stdout output",
+			tokens:         []string{"cat", "/tmp/bar/pear", "nonexistent", "2>", "/tmp/quz/quz.md"},
+			wantFields:     []string{"cat", "/tmp/bar/pear", "nonexistent"},
+			wantStderrPath: "/tmp/quz/quz.md",
+		},
+		{
+			name:           "echo with stderr redirect leaves args intact",
+			tokens:         []string{"echo", "Maria", "file", "cannot", "be", "found", "2>", "/tmp/quz/foo.md"},
+			wantFields:     []string{"echo", "Maria", "file", "cannot", "be", "found"},
+			wantStderrPath: "/tmp/quz/foo.md",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFields, gotStdoutPath := ParseRedirect(tt.tokens)
+			gotFields, gotStdoutPath, gotStderrPath := ParseRedirect(tt.tokens)
 			if !reflect.DeepEqual(gotFields, tt.wantFields) {
 				t.Errorf("ParseRedirect() fields = %v, want %v", gotFields, tt.wantFields)
 			}
 			if gotStdoutPath != tt.wantStdoutPath {
 				t.Errorf("ParseRedirect() stdoutPath = %q, want %q", gotStdoutPath, tt.wantStdoutPath)
+			}
+			if gotStderrPath != tt.wantStderrPath {
+				t.Errorf("ParseRedirect() stderrPath = %q, want %q", gotStderrPath, tt.wantStderrPath)
 			}
 		})
 	}

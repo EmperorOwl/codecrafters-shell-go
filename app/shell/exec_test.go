@@ -39,7 +39,7 @@ func TestNewExternalCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := newExternalCommand(tt.fields, tt.executablePath, io.Discard)
+			cmd := newExternalCommand(tt.fields, tt.executablePath, io.Discard, io.Discard)
 			if cmd.Path != tt.wantProgramPath {
 				t.Errorf("Path = %q, want %q", cmd.Path, tt.wantProgramPath)
 			}
