@@ -1,9 +1,13 @@
 package completion
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
+)
 
 func TestApplyTab(t *testing.T) {
-	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
+	builtinsList := []string{"cd", "echo", "exit", "pwd", "type"}
 	listFiles := func(dir string) []string {
 		if dir == "" {
 			return []string{"first.txt", "readme.txt", "second.txt"}
@@ -12,9 +16,10 @@ func TestApplyTab(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		buffer     string
-		wantBuffer string
+		name                 string
+		registeredCompleters map[string]builtins.Completer
+		buffer               string
+		wantBuffer           string
 	}{
 		{
 			name:       "command completion",
@@ -31,11 +36,24 @@ func TestApplyTab(t *testing.T) {
 			buffer:     "echo first.txt sec",
 			wantBuffer: "echo first.txt second.txt ",
 		},
+		{
+			name: "programmable completion",
+			registeredCompleters: map[string]builtins.Completer{
+				"docker": {
+					Path: "/path/to/completer",
+					Func: func(string) ([]string, error) {
+						return []string{"run"}, nil
+					},
+				},
+			},
+			buffer:     "docker ",
+			wantBuffer: "docker run ",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtins, nil, listFiles, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(builtinsList, nil, listFiles, tt.registeredCompleters, tt.buffer)
 			if gotBuffer != tt.wantBuffer {
 				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
 			}

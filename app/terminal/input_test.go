@@ -103,7 +103,7 @@ func TestReadLineRaw(t *testing.T) {
 			reader := bufio.NewReader(strings.NewReader(tt.input))
 			var out bytes.Buffer
 
-			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables, nil)
+			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables, nil, nil)
 			if err != nil {
 				t.Fatalf("ReadLine() error = %v", err)
 			}
@@ -126,7 +126,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 
 	var out bytes.Buffer
 
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil, nil)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -140,7 +140,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil, nil)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}
@@ -172,7 +172,7 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 	var out bytes.Buffer
 
 	skipNextLF = false
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles, nil)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -186,7 +186,7 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 	// Simulates a second prompt after an external command. The shell re-enables
 	// raw mode via Session.PrepareRead; tab completion must still work here.
 	skipNextLF = false
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles, nil)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}

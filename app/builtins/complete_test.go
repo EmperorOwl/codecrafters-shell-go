@@ -2,20 +2,22 @@ package builtins
 
 import (
 	"bytes"
+	"maps"
 	"testing"
 )
 
-func resetCompletionSpecs() {
-	completionSpecs = map[string]string{}
-}
-
 func TestComplete(t *testing.T) {
+	runCompleter := CompleterFunc(func(scriptPath string) ([]string, error) {
+		return []string{scriptPath}, nil
+	})
+
 	tests := []struct {
-		name    string
-		setup   func()
-		args    []string
-		wantOut string
-		wantErr string
+		name                     string
+		registeredCompleters     map[string]Completer
+		args                     []string
+		wantOut                  string
+		wantErr                  string
+		wantRegisteredCompleters map[string]Completer
 	}{
 		{
 			name:    "prints missing specification for -p",
@@ -23,20 +25,21 @@ func TestComplete(t *testing.T) {
 			wantErr: "complete: git: no completion specification\n",
 		},
 		{
-			name: "registers completion with -C",
-			setup: func() {
-				Complete(nil, nil, []string{"-C", "/path/to/script", "git"})
-			},
-			args:    []string{"-p", "git"},
-			wantOut: "complete -C '/path/to/script' git\n",
+			name:                 "displays registered completion for -p",
+			registeredCompleters: map[string]Completer{"git": {Path: "/path/to/script"}},
+			args:                 []string{"-p", "git"},
+			wantOut:              "complete -C '/path/to/script' git\n",
 		},
 		{
-			name: "registers and displays docker completion",
-			setup: func() {
-				Complete(nil, nil, []string{"-C", "/path/to/docker/completer", "docker"})
-			},
-			args:    []string{"-p", "docker"},
-			wantOut: "complete -C '/path/to/docker/completer' docker\n",
+			name:                 "displays docker completion for -p",
+			registeredCompleters: map[string]Completer{"docker": {Path: "/path/to/docker/completer"}},
+			args:                 []string{"-p", "docker"},
+			wantOut:              "complete -C '/path/to/docker/completer' docker\n",
+		},
+		{
+			name:                     "registers completion with -C",
+			args:                     []string{"-C", "/path/to/script", "git"},
+			wantRegisteredCompleters: map[string]Completer{"git": {Path: "/path/to/script", Func: runCompleter}},
 		},
 		{
 			name:    "ignores -C with too few arguments",
@@ -54,18 +57,30 @@ func TestComplete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetCompletionSpecs()
-			if tt.setup != nil {
-				tt.setup()
-			}
+			registeredCompleters := map[string]Completer{}
+			maps.Copy(registeredCompleters, tt.registeredCompleters)
 
 			var stdout, stderr bytes.Buffer
-			Complete(&stdout, &stderr, tt.args)
+			Complete(&stdout, &stderr, tt.args, registeredCompleters, runCompleter)
 			if got := stdout.String(); got != tt.wantOut {
 				t.Errorf("Complete(%v) stdout = %q, want %q", tt.args, got, tt.wantOut)
 			}
 			if got := stderr.String(); got != tt.wantErr {
 				t.Errorf("Complete(%v) stderr = %q, want %q", tt.args, got, tt.wantErr)
+			}
+			if tt.wantRegisteredCompleters != nil {
+				for command, want := range tt.wantRegisteredCompleters {
+					got, ok := registeredCompleters[command]
+					if !ok {
+						t.Fatalf("registeredCompleters missing %q", command)
+					}
+					if got.Path != want.Path {
+						t.Errorf("registeredCompleters[%q].Path = %q, want %q", command, got.Path, want.Path)
+					}
+					if (got.Func == nil) != (want.Func == nil) {
+						t.Errorf("registeredCompleters[%q].Func set = %v, want %v", command, got.Func != nil, want.Func != nil)
+					}
+				}
 			}
 		})
 	}

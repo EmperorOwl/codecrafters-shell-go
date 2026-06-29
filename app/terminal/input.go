@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 )
 
@@ -13,9 +14,16 @@ import (
 // on the next readLineRaw call instead of submitting an empty line.
 var skipNextLF bool
 
-func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executables []string, listFiles completion.FileLister) (line string, eof bool, err error) {
+func ReadLine(
+	reader *bufio.Reader,
+	w io.Writer,
+	rawMode bool,
+	builtins, executables []string,
+	listFiles completion.FileLister,
+	registeredCompleters map[string]builtins.Completer,
+) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w, builtins, executables, listFiles)
+		return readLineRaw(reader, w, builtins, executables, listFiles, registeredCompleters)
 	}
 
 	writePrompt(w, false)
@@ -29,7 +37,13 @@ func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executa
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables []string, listFiles completion.FileLister) (string, bool, error) {
+func readLineRaw(
+	reader *bufio.Reader,
+	w io.Writer,
+	builtins, executables []string,
+	listFiles completion.FileLister,
+	registeredCompleters map[string]builtins.Completer,
+) (string, bool, error) {
 	writePrompt(w, true)
 
 	var buffer []byte
@@ -49,7 +63,7 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables []stri
 
 		switch b {
 		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(builtins, executables, listFiles, string(buffer))
+			newBuffer, listings := completion.ApplyTab(builtins, executables, listFiles, registeredCompleters, string(buffer))
 			switch {
 			case len(listings) > 0:
 				if slices.Equal(pendingListings, listings) {
