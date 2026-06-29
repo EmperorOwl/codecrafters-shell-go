@@ -28,11 +28,10 @@ func CommandNotFoundMessage(command string) string {
 	return command + ": command not found"
 }
 
-func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
-	stderrOut := err
-	reader := bufio.NewReader(in)
+func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
+	reader := bufio.NewReader(shellStdin)
 	for {
-		WritePrompt(out)
+		WritePrompt(shellStdout)
 
 		line, err := reader.ReadString('\n')
 		if err == io.EOF {
@@ -57,11 +56,11 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 		}
 
 		command := fields[0]
-		stdout, closeStdout, redirectErr := openRedirect(out, redirect.StdoutPath, redirect.StdoutAppend)
+		stdout, closeStdout, redirectErr := openRedirect(shellStdout, redirect.StdoutPath, redirect.StdoutAppend)
 		if redirectErr != nil {
 			return redirectErr
 		}
-		stderr, closeStderr, redirectErr := openRedirect(stderrOut, redirect.StderrPath, redirect.StderrAppend)
+		stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect.StderrPath, redirect.StderrAppend)
 		if redirectErr != nil {
 			closeStdout()
 			return redirectErr
@@ -95,7 +94,7 @@ func (s *Shell) Run(in io.Reader, out, err io.Writer) error {
 		}
 
 		closeRedirects()
-		fmt.Fprintf(out, "%s\n", CommandNotFoundMessage(command))
+		fmt.Fprintf(shellStdout, "%s\n", CommandNotFoundMessage(command))
 
 		if err == io.EOF {
 			return nil
