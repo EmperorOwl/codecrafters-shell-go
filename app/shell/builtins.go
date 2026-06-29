@@ -59,6 +59,7 @@ func TryBuiltin(fields []string, stdout, stderr io.Writer) (handled bool, should
 		builtins.Type(stdout, target, IsShellBuiltin(target))
 		return true, false
 	case "complete":
+		builtins.Complete(stderr, fields[1:])
 		return true, false
 	default:
 		return false, false
