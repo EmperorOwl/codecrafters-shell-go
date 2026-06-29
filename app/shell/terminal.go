@@ -23,12 +23,6 @@ func (t terminalWriter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-func redrawLine(w io.Writer, line string) {
-	io.WriteString(w, "\r\033[K")
-	io.WriteString(w, Prompt)
-	io.WriteString(w, line)
-}
-
 func wrapTerminalWriter(w io.Writer, rawMode bool) io.Writer {
 	if rawMode {
 		return terminalWriter{w: w}

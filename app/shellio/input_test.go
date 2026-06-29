@@ -1,4 +1,4 @@
-package shell
+package shellio
 
 import (
 	"bufio"
@@ -8,6 +8,8 @@ import (
 )
 
 func TestReadLineRaw(t *testing.T) {
+	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
+
 	tests := []struct {
 		name     string
 		input    string
@@ -46,6 +48,12 @@ func TestReadLineRaw(t *testing.T) {
 			wantOut:  "\r$ e\r\necho\r\nexit\r\n\r\033[K$ e\r\n",
 		},
 		{
+			name:     "tab rings bell on no match",
+			input:    "xyz\t\n",
+			wantLine: "xyz",
+			wantOut:  "\r$ xyz\a\r\n",
+		},
+		{
 			name:     "backspace removes character",
 			input:    "ab\x08\n",
 			wantLine: "a",
@@ -74,51 +82,52 @@ func TestReadLineRaw(t *testing.T) {
 			reader := bufio.NewReader(strings.NewReader(tt.input))
 			var out bytes.Buffer
 
-			gotLine, gotEOF, err := readLine(reader, &out, true)
+			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins)
 			if err != nil {
-				t.Fatalf("readLine() error = %v", err)
+				t.Fatalf("ReadLine() error = %v", err)
 			}
 			if gotLine != tt.wantLine {
-				t.Errorf("readLine() line = %q, want %q", gotLine, tt.wantLine)
+				t.Errorf("ReadLine() line = %q, want %q", gotLine, tt.wantLine)
 			}
 			if gotEOF != tt.wantEOF {
-				t.Errorf("readLine() eof = %v, want %v", gotEOF, tt.wantEOF)
+				t.Errorf("ReadLine() eof = %v, want %v", gotEOF, tt.wantEOF)
 			}
 			if got := out.String(); got != tt.wantOut {
-				t.Errorf("readLine() output = %q, want %q", got, tt.wantOut)
+				t.Errorf("ReadLine() output = %q, want %q", got, tt.wantOut)
 			}
 		})
 	}
 }
 
 func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
+	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 	skipNextLF = false
 
 	var out bytes.Buffer
 
-	line, eof, err := readLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins)
 	if err != nil {
-		t.Fatalf("first readLine() error = %v", err)
+		t.Fatalf("first ReadLine() error = %v", err)
 	}
 	if line != "hi" {
-		t.Errorf("first readLine() line = %q, want %q", line, "hi")
+		t.Errorf("first ReadLine() line = %q, want %q", line, "hi")
 	}
 	if eof {
-		t.Error("first readLine() eof = true, want false")
+		t.Error("first ReadLine() eof = true, want false")
 	}
 	if !skipNextLF {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
-	line, eof, err = readLine(bufio.NewReader(strings.NewReader("\n")), &out, true)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins)
 	if err != nil {
-		t.Fatalf("second readLine() error = %v", err)
+		t.Fatalf("second ReadLine() error = %v", err)
 	}
 	if line != "" {
-		t.Errorf("second readLine() line = %q, want empty (stray LF skipped)", line)
+		t.Errorf("second ReadLine() line = %q, want empty (stray LF skipped)", line)
 	}
 	if !eof {
-		t.Error("second readLine() eof = false, want true")
+		t.Error("second ReadLine() eof = false, want true")
 	}
 	if skipNextLF {
 		t.Error("skipNextLF = true after skipped LF, want false")

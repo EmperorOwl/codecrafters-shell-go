@@ -1,4 +1,4 @@
-package shell
+package shellio
 
 import (
 	"bufio"
@@ -14,15 +14,9 @@ import (
 // on the next readLineRaw call instead of submitting an empty line.
 var skipNextLF bool
 
-const Prompt = "$ "
-
-func WritePrompt(w io.Writer) {
-	io.WriteString(w, Prompt)
-}
-
-// terminalStdin reports whether stdin is an interactive terminal.
+// TerminalStdin reports whether stdin is an interactive terminal.
 // Raw-mode input is only enabled when both are true.
-func terminalStdin(r io.Reader) (*os.File, bool) {
+func TerminalStdin(r io.Reader) (*os.File, bool) {
 	f, ok := r.(*os.File)
 	if !ok {
 		return nil, false
@@ -30,12 +24,12 @@ func terminalStdin(r io.Reader) (*os.File, bool) {
 	return f, term.IsTerminal(int(f.Fd()))
 }
 
-func readLine(reader *bufio.Reader, w io.Writer, rawMode bool) (line string, eof bool, err error) {
+func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins []string) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w)
+		return readLineRaw(reader, w, builtins)
 	}
 
-	WritePrompt(w)
+	writePrompt(w, false)
 	text, err := reader.ReadString('\n')
 	if err == io.EOF {
 		return strings.TrimSpace(text), true, nil
@@ -46,8 +40,8 @@ func readLine(reader *bufio.Reader, w io.Writer, rawMode bool) (line string, eof
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(reader *bufio.Reader, w io.Writer) (string, bool, error) {
-	io.WriteString(w, "\r$ ")
+func readLineRaw(reader *bufio.Reader, w io.Writer, builtins []string) (string, bool, error) {
+	writePrompt(w, true)
 
 	var buffer []byte
 
@@ -65,33 +59,36 @@ func readLineRaw(reader *bufio.Reader, w io.Writer) (string, bool, error) {
 
 		switch b {
 		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(BuiltinNames(), string(buffer))
-			if len(listings) > 0 {
+			newBuffer, listings := completion.ApplyTab(builtins, string(buffer))
+			switch {
+			case len(listings) > 0:
 				for _, match := range listings {
-					io.WriteString(w, "\r\n")
+					writeCRLF(w)
 					io.WriteString(w, match)
 				}
-				io.WriteString(w, "\r\n")
+				writeCRLF(w)
 				redrawLine(w, string(buffer))
-			} else {
+			case newBuffer != string(buffer):
 				buffer = []byte(newBuffer)
 				redrawLine(w, newBuffer)
+			default:
+				ringBell(w)
 			}
 		case '\r': // Enter on Windows
 			skipNextLF = true
-			io.WriteString(w, "\r\n")
+			writeCRLF(w)
 			return string(buffer), false, nil
 		case '\n': // Enter on Unix; skip LF when it follows CR on Windows
 			if skipNextLF {
 				skipNextLF = false
 				continue
 			}
-			io.WriteString(w, "\r\n")
+			writeCRLF(w)
 			return string(buffer), false, nil
 		case 127, 8: // Backspace (DEL on Unix, BS elsewhere)
 			if len(buffer) > 0 {
 				buffer = buffer[:len(buffer)-1]
-				io.WriteString(w, "\b \b")
+				writeBackspace(w)
 			}
 		default: // Echo printable input
 			buffer = append(buffer, b)

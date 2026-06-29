@@ -9,6 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	"github.com/codecrafters-io/shell-starter-go/app/shellio"
 	"golang.org/x/term"
 )
 
@@ -23,7 +24,7 @@ func CommandNotFoundMessage(command string) string {
 }
 
 func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
-	stdinFile, rawMode := terminalStdin(shellStdin)
+	stdinFile, rawMode := shellio.TerminalStdin(shellStdin)
 	if rawMode {
 		oldState, err := term.MakeRaw(int(stdinFile.Fd()))
 		if err != nil {
@@ -35,7 +36,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 
 	reader := bufio.NewReader(shellStdin)
 	for {
-		line, eof, err := readLine(reader, shellStdout, rawMode)
+		line, eof, err := shellio.ReadLine(reader, shellStdout, rawMode, BuiltinNames())
 		if err != nil {
 			return err
 		}
