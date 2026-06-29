@@ -68,6 +68,13 @@ func TestReadLineRaw(t *testing.T) {
 			wantOut:     "\r$ xyz_\a\r\nxyz_bar  xyz_baz  xyz_quz\r\n\r\033[K$ xyz_\r\n",
 		},
 		{
+			name:        "progressive tab completes to longest common prefix",
+			executables: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			input:       "xyz_\t_\t_\t\n",
+			wantLine:    "xyz_foo_bar_baz ",
+			wantOut:     "\r$ xyz_\r\033[K$ xyz_foo_\r\033[K$ xyz_foo_bar_\r\033[K$ xyz_foo_bar_baz \r\n",
+		},
+		{
 			name:     "backspace removes character",
 			input:    "ab\x08\n",
 			wantLine: "a",

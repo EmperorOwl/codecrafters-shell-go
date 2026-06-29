@@ -52,6 +52,24 @@ func TestApplyTab(t *testing.T) {
 			wantBuffer:   "xyz_",
 			wantListings: []string{"xyz_bar", "xyz_baz", "xyz_quz"},
 		},
+		{
+			name:        "completes to longest common prefix",
+			executables: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			buffer:      "xyz_",
+			wantBuffer:  "xyz_foo",
+		},
+		{
+			name:        "completes to next longest common prefix",
+			executables: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			buffer:      "xyz_foo_",
+			wantBuffer:  "xyz_foo_bar",
+		},
+		{
+			name:        "completes final unique executable",
+			executables: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			buffer:      "xyz_foo_bar_",
+			wantBuffer:  "xyz_foo_bar_baz ",
+		},
 	}
 
 	for _, tt := range tests {
