@@ -7,8 +7,8 @@ import (
 )
 
 func TestComplete(t *testing.T) {
-	runCompleter := CompleterFunc(func(scriptPath, command, currentWord, previousWord string) ([]string, error) {
-		return []string{scriptPath}, nil
+	runCompleter := CompleterFunc(func(opts CompleterFuncOptions) ([]string, error) {
+		return []string{opts.ScriptPath}, nil
 	})
 
 	tests := []struct {

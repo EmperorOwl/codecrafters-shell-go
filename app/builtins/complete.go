@@ -5,8 +5,18 @@ import (
 	"io"
 )
 
+// CompleterFuncOptions holds the context passed to a completer script.
+type CompleterFuncOptions struct {
+	ScriptPath   string
+	Command      string
+	CurrentWord  string
+	PreviousWord string
+	CompLine     string
+	CompPoint    int
+}
+
 // CompleterFunc runs a completer script and returns completion candidates.
-type CompleterFunc func(scriptPath, command, currentWord, previousWord string) ([]string, error)
+type CompleterFunc func(opts CompleterFuncOptions) ([]string, error)
 
 // Completer holds a registered completer script and its runner.
 type Completer struct {

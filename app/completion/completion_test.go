@@ -41,7 +41,7 @@ func TestApplyTab(t *testing.T) {
 			registeredCompleters: map[string]builtins.Completer{
 				"docker": {
 					Path: "/path/to/completer",
-					Func: func(string, string, string, string) ([]string, error) {
+					Func: func(builtins.CompleterFuncOptions) ([]string, error) {
 						return []string{"run"}, nil
 					},
 				},

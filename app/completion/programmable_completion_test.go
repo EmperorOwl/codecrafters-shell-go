@@ -6,48 +6,61 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
-func TestParseCompletionContext(t *testing.T) {
+func TestBuildCompleterFuncOptions(t *testing.T) {
 	tests := []struct {
-		name         string
-		buffer       string
-		wantCommand  string
-		wantCurrent  string
-		wantPrevious string
+		name   string
+		buffer string
+		want   builtins.CompleterFuncOptions
 	}{
 		{
-			name:         "first argument completion",
-			buffer:       "git ",
-			wantCommand:  "git",
-			wantCurrent:  "",
-			wantPrevious: "",
+			name:   "first argument completion",
+			buffer: "git ",
+			want: builtins.CompleterFuncOptions{
+				Command:   "git",
+				CompLine:  "git ",
+				CompPoint: 4,
+			},
 		},
 		{
-			name:         "partial first argument",
-			buffer:       "git remot",
-			wantCommand:  "git",
-			wantCurrent:  "remot",
-			wantPrevious: "",
+			name:   "partial first argument",
+			buffer: "git remot",
+			want: builtins.CompleterFuncOptions{
+				Command:     "git",
+				CurrentWord: "remot",
+				CompLine:    "git remot",
+				CompPoint:   9,
+			},
 		},
 		{
-			name:         "later argument completion",
-			buffer:       "git remote set",
-			wantCommand:  "git",
-			wantCurrent:  "set",
-			wantPrevious: "remote",
+			name:   "later argument completion",
+			buffer: "git remote set",
+			want: builtins.CompleterFuncOptions{
+				Command:      "git",
+				CurrentWord:  "set",
+				PreviousWord: "remote",
+				CompLine:     "git remote set",
+				CompPoint:    14,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			command, currentWord, previousWord := parseCompletionContext(tt.buffer)
-			if command != tt.wantCommand {
-				t.Errorf("command = %q, want %q", command, tt.wantCommand)
+			got := buildCompleterFuncOptions(tt.buffer)
+			if got.Command != tt.want.Command {
+				t.Errorf("Command = %q, want %q", got.Command, tt.want.Command)
 			}
-			if currentWord != tt.wantCurrent {
-				t.Errorf("currentWord = %q, want %q", currentWord, tt.wantCurrent)
+			if got.CurrentWord != tt.want.CurrentWord {
+				t.Errorf("CurrentWord = %q, want %q", got.CurrentWord, tt.want.CurrentWord)
 			}
-			if previousWord != tt.wantPrevious {
-				t.Errorf("previousWord = %q, want %q", previousWord, tt.wantPrevious)
+			if got.PreviousWord != tt.want.PreviousWord {
+				t.Errorf("PreviousWord = %q, want %q", got.PreviousWord, tt.want.PreviousWord)
+			}
+			if got.CompLine != tt.want.CompLine {
+				t.Errorf("CompLine = %q, want %q", got.CompLine, tt.want.CompLine)
+			}
+			if got.CompPoint != tt.want.CompPoint {
+				t.Errorf("CompPoint = %d, want %d", got.CompPoint, tt.want.CompPoint)
 			}
 		})
 	}
@@ -57,8 +70,11 @@ func TestApplyTabProgrammableTab(t *testing.T) {
 	registeredCompleters := map[string]builtins.Completer{
 		"git": {
 			Path: "/path/to/completer",
-			Func: func(scriptPath, command, currentWord, previousWord string) ([]string, error) {
-				if scriptPath != "/path/to/completer" || command != "git" || currentWord != "set" || previousWord != "remote" {
+			Func: func(opts builtins.CompleterFuncOptions) ([]string, error) {
+				if opts.ScriptPath != "/path/to/completer" || opts.Command != "git" || opts.CurrentWord != "set" || opts.PreviousWord != "remote" {
+					return nil, nil
+				}
+				if opts.CompLine != "git remote set" || opts.CompPoint != len("git remote set") {
 					return nil, nil
 				}
 				return []string{"set-url"}, nil
