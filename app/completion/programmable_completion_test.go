@@ -25,10 +25,11 @@ func TestBuildCompleterFuncOptions(t *testing.T) {
 			name:   "partial first argument",
 			buffer: "git remot",
 			want: builtins.CompleterFuncOptions{
-				Command:     "git",
-				CurrentWord: "remot",
-				CompLine:    "git remot",
-				CompPoint:   9,
+				Command:      "git",
+				CurrentWord:  "remot",
+				PreviousWord: "git",
+				CompLine:     "git remot",
+				CompPoint:    9,
 			},
 		},
 		{
@@ -67,27 +68,50 @@ func TestBuildCompleterFuncOptions(t *testing.T) {
 }
 
 func TestApplyTabProgrammableTab(t *testing.T) {
-	registeredCompleters := map[string]builtins.Completer{
-		"git": {
-			Path: "/path/to/completer",
-			Func: func(opts builtins.CompleterFuncOptions) ([]string, error) {
-				if opts.ScriptPath != "/path/to/completer" || opts.Command != "git" || opts.CurrentWord != "set" || opts.PreviousWord != "remote" {
-					return nil, nil
-				}
-				if opts.CompLine != "git remote set" || opts.CompPoint != len("git remote set") {
-					return nil, nil
-				}
-				return []string{"set-url"}, nil
-			},
+	tests := []struct {
+		name         string
+		buffer       string
+		candidates   []string
+		wantBuffer   string
+		wantListings []string
+	}{
+		{
+			name:       "completes single candidate",
+			buffer:     "git remote set",
+			candidates: []string{"set-url"},
+			wantBuffer: "git remote set-url ",
+		},
+		{
+			name:         "lists multiple candidates",
+			buffer:       "git sta",
+			candidates:   []string{"status", "stash"},
+			wantBuffer:   "git sta",
+			wantListings: []string{"stash", "status"},
 		},
 	}
 
-	gotBuffer, gotListings := ApplyTab(nil, nil, nil, registeredCompleters, "git remote set")
-	wantBuffer := "git remote set-url "
-	if gotBuffer != wantBuffer {
-		t.Errorf("ApplyTab(%q) buffer = %q, want %q", "git remote set", gotBuffer, wantBuffer)
-	}
-	if len(gotListings) != 0 {
-		t.Errorf("ApplyTab(%q) listings = %v, want nil", "git remote set", gotListings)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidates := tt.candidates
+			registeredCompleters := map[string]builtins.Completer{
+				"git": {
+					Func: func(builtins.CompleterFuncOptions) ([]string, error) {
+						return candidates, nil
+					},
+				},
+			}
+			gotBuffer, gotListings := ApplyTab(nil, nil, nil, registeredCompleters, tt.buffer)
+			if gotBuffer != tt.wantBuffer {
+				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
+			}
+			if len(gotListings) != len(tt.wantListings) {
+				t.Fatalf("ApplyTab(%q) listings = %v, want %v", tt.buffer, gotListings, tt.wantListings)
+			}
+			for i, listing := range gotListings {
+				if listing != tt.wantListings[i] {
+					t.Errorf("listings[%d] = %q, want %q", i, listing, tt.wantListings[i])
+				}
+			}
+		})
 	}
 }

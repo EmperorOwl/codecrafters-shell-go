@@ -3,6 +3,7 @@ package completion
 import (
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -56,11 +57,17 @@ func buildCompleterFuncOptions(buffer string) builtins.CompleterFuncOptions {
 
 	lastSpace := strings.LastIndex(afterCommand, " ")
 	if lastSpace < 0 {
+		currentWord := afterCommand
+		previousWord := ""
+		if currentWord != "" {
+			previousWord = command
+		}
 		return builtins.CompleterFuncOptions{
-			Command:     command,
-			CurrentWord: afterCommand,
-			CompLine:    buffer,
-			CompPoint:   len(buffer),
+			Command:      command,
+			CurrentWord:  currentWord,
+			PreviousWord: previousWord,
+			CompLine:     buffer,
+			CompPoint:    len(buffer),
 		}
 	}
 
@@ -101,6 +108,7 @@ func applyProgrammableTab(buffer string, completer builtins.Completer) (newBuffe
 		}
 		return buffer[:lastSpace+1] + candidates[0] + " ", nil
 	default:
+		slices.Sort(candidates)
 		return buffer, candidates
 	}
 }
