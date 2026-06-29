@@ -9,6 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 	"github.com/codecrafters-io/shell-starter-go/app/shellio"
 	"golang.org/x/term"
 )
@@ -36,7 +37,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 
 	reader := bufio.NewReader(shellStdin)
 	for {
-		line, eof, err := shellio.ReadLine(reader, shellStdout, rawMode, BuiltinNames())
+		line, eof, err := shellio.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath())
 		if err != nil {
 			return err
 		}

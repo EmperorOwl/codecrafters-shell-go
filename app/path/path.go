@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 // FindExecutableInPath searches PATH for an executable named fullName.
@@ -24,9 +23,9 @@ func FindExecutableInPath(fullName string) (string, bool) {
 	return "", false
 }
 
-// FindMatchingExecutablesInPath returns sorted executable basenames from PATH that start with prefix.
+// FindAllExecutablesInPath returns sorted executable basenames from PATH.
 // Missing PATH directories are skipped.
-func FindMatchingExecutablesInPath(prefix string) []string {
+func FindAllExecutablesInPath() []string {
 	seen := make(map[string]struct{})
 	var matches []string
 
@@ -46,10 +45,6 @@ func FindMatchingExecutablesInPath(prefix string) []string {
 			}
 
 			name := entry.Name()
-			if !strings.HasPrefix(name, prefix) {
-				continue
-			}
-
 			if _, ok := isExecutable(filepath.Join(dir, name)); !ok {
 				continue
 			}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
@@ -24,9 +25,9 @@ func TerminalStdin(r io.Reader) (*os.File, bool) {
 	return f, term.IsTerminal(int(f.Fd()))
 }
 
-func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins []string) (line string, eof bool, err error) {
+func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executables []string) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w, builtins)
+		return readLineRaw(reader, w, builtins, executables)
 	}
 
 	writePrompt(w, false)
@@ -40,10 +41,11 @@ func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins []string
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(reader *bufio.Reader, w io.Writer, builtins []string) (string, bool, error) {
+func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables []string) (string, bool, error) {
 	writePrompt(w, true)
 
 	var buffer []byte
+	var pendingListings []string
 
 	for {
 		b, err := reader.ReadByte()
@@ -59,19 +61,23 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, builtins []string) (string, 
 
 		switch b {
 		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(builtins, string(buffer))
+			newBuffer, listings := completion.ApplyTab(builtins, executables, string(buffer))
 			switch {
 			case len(listings) > 0:
-				for _, match := range listings {
-					writeCRLF(w)
-					io.WriteString(w, match)
+				if slices.Equal(pendingListings, listings) {
+					pendingListings = nil
+					writeListings(w, listings)
+					redrawLine(w, string(buffer))
+				} else {
+					pendingListings = listings
+					ringBell(w)
 				}
-				writeCRLF(w)
-				redrawLine(w, string(buffer))
 			case newBuffer != string(buffer):
+				pendingListings = nil
 				buffer = []byte(newBuffer)
 				redrawLine(w, newBuffer)
 			default:
+				pendingListings = nil
 				ringBell(w)
 			}
 		case '\r': // Enter on Windows

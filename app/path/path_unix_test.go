@@ -75,7 +75,7 @@ func TestFindExecutableInPath(t *testing.T) {
 	}
 }
 
-func TestFindMatchingExecutablesInPath(t *testing.T) {
+func TestFindAllExecutablesInPath(t *testing.T) {
 	dir := t.TempDir()
 	executable := filepath.Join(dir, "custom_executable")
 	if err := os.WriteFile(executable, nil, 0o755); err != nil {
@@ -90,33 +90,18 @@ func TestFindMatchingExecutablesInPath(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		prefix  string
 		pathEnv string
 		want    []string
 	}{
 		{
-			name:    "completes executable in path",
-			prefix:  "custom",
+			name:    "lists executables in path",
 			pathEnv: dir,
-			want:    []string{"custom_executable"},
-		},
-		{
-			name:    "no match",
-			prefix:  "missing",
-			pathEnv: dir,
-			want:    nil,
+			want:    []string{"custom_executable", "other_tool"},
 		},
 		{
 			name:    "skips missing directory",
-			prefix:  "custom",
 			pathEnv: "missing:" + dir,
-			want:    []string{"custom_executable"},
-		},
-		{
-			name:    "lists prefix matches for executables only",
-			prefix:  "c",
-			pathEnv: dir,
-			want:    []string{"custom_executable"},
+			want:    []string{"custom_executable", "other_tool"},
 		},
 	}
 
@@ -124,13 +109,13 @@ func TestFindMatchingExecutablesInPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PATH", tt.pathEnv)
 
-			got := FindMatchingExecutablesInPath(tt.prefix)
+			got := FindAllExecutablesInPath()
 			if len(got) != len(tt.want) {
-				t.Fatalf("FindMatchingExecutablesInPath(%q) = %v, want %v", tt.prefix, got, tt.want)
+				t.Fatalf("FindAllExecutablesInPath() = %v, want %v", got, tt.want)
 			}
 			for i := range tt.want {
 				if got[i] != tt.want[i] {
-					t.Errorf("FindMatchingExecutablesInPath(%q)[%d] = %q, want %q", tt.prefix, i, got[i], tt.want[i])
+					t.Errorf("FindAllExecutablesInPath()[%d] = %q, want %q", i, got[i], tt.want[i])
 				}
 			}
 		})

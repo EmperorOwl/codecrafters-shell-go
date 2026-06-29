@@ -8,16 +8,15 @@ import (
 )
 
 func TestReadLineRaw(t *testing.T) {
-	t.Setenv("PATH", "")
-
 	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 
 	tests := []struct {
-		name     string
-		input    string
-		wantLine string
-		wantEOF  bool
-		wantOut  string
+		name          string
+		executables   []string
+		input         string
+		wantLine      string
+		wantEOF       bool
+		wantOut       string
 	}{
 		{
 			name:     "unix enter submits line",
@@ -44,16 +43,29 @@ func TestReadLineRaw(t *testing.T) {
 			wantOut:  "\r$ exi\r\033[K$ exit \r\n",
 		},
 		{
-			name:     "tab lists ambiguous matches",
+			name:     "tab rings bell on ambiguous prefix",
 			input:    "e\t\n",
 			wantLine: "e",
-			wantOut:  "\r$ e\r\necho\r\nexit\r\n\r\033[K$ e\r\n",
+			wantOut:  "\r$ e\a\r\n",
+		},
+		{
+			name:     "double tab lists ambiguous matches",
+			input:    "e\t\t\n",
+			wantLine: "e",
+			wantOut:  "\r$ e\a\r\necho  exit\r\n\r\033[K$ e\r\n",
 		},
 		{
 			name:     "tab rings bell on no match",
 			input:    "xyz\t\n",
 			wantLine: "xyz",
 			wantOut:  "\r$ xyz\a\r\n",
+		},
+		{
+			name:        "double tab lists executable matches",
+			executables: []string{"xyz_bar", "xyz_baz", "xyz_quz"},
+			input:       "xyz_\t\t\n",
+			wantLine:    "xyz_",
+			wantOut:     "\r$ xyz_\a\r\nxyz_bar  xyz_baz  xyz_quz\r\n\r\033[K$ xyz_\r\n",
 		},
 		{
 			name:     "backspace removes character",
@@ -84,7 +96,7 @@ func TestReadLineRaw(t *testing.T) {
 			reader := bufio.NewReader(strings.NewReader(tt.input))
 			var out bytes.Buffer
 
-			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins)
+			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables)
 			if err != nil {
 				t.Fatalf("ReadLine() error = %v", err)
 			}
@@ -107,7 +119,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 
 	var out bytes.Buffer
 
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -121,7 +133,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}

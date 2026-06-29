@@ -1,6 +1,9 @@
 package shellio
 
-import "io"
+import (
+	"io"
+	"strings"
+)
 
 const Prompt = "$ "
 
@@ -28,4 +31,10 @@ func writeCRLF(w io.Writer) {
 
 func writeBackspace(w io.Writer) {
 	io.WriteString(w, "\b \b")
+}
+
+func writeListings(w io.Writer, listings []string) {
+	writeCRLF(w)
+	io.WriteString(w, strings.Join(listings, "  "))
+	writeCRLF(w)
 }
