@@ -2,23 +2,19 @@ package files
 
 import (
 	"os"
+	"path/filepath"
 	"slices"
 )
 
-// ListInCurrentDir returns sorted file and directory names in the current working directory.
-// Directory names include a trailing slash.
-func ListInCurrentDir() []string {
-	return ListInDir("")
-}
-
-// ListInDir returns sorted file and directory names in dir relative to the current working directory.
-// An empty dir lists the current working directory. Directory names include a trailing slash.
-func ListInDir(dir string) []string {
-	if dir == "" {
-		dir = "."
+// ListInDir returns sorted file and directory names in dir relative to base.
+// An empty dir lists base. Directory names include a trailing slash.
+func ListInDir(base, dir string) []string {
+	path := base
+	if dir != "" {
+		path = filepath.Join(base, filepath.FromSlash(dir))
 	}
 
-	entries, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil
 	}

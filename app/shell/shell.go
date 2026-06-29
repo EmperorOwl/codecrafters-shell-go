@@ -38,7 +38,15 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 
 	reader := bufio.NewReader(shellStdin)
 	for {
-		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), files.ListInDir)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		listFiles := func(dir string) []string {
+			return files.ListInDir(cwd, dir)
+		}
+
+		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles)
 		if err != nil {
 			return err
 		}

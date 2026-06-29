@@ -2,8 +2,8 @@ package completion
 
 import "strings"
 
-// FileLister returns sorted file and directory names in dir relative to the current working directory.
-// An empty dir lists the current working directory. Directory names include a trailing slash.
+// FileLister returns sorted file and directory names in dir relative to a base directory.
+// An empty dir lists the base directory. Directory names include a trailing slash.
 type FileLister func(dir string) []string
 
 func completeEntry(name string) string {
