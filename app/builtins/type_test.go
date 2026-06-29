@@ -20,6 +20,7 @@ func TestType(t *testing.T) {
 		{name: "type builtin", command: "type", isBuiltin: true, want: "type is a shell builtin\n"},
 		{name: "pwd builtin", command: "pwd", isBuiltin: true, want: "pwd is a shell builtin\n"},
 		{name: "cd builtin", command: "cd", isBuiltin: true, want: "cd is a shell builtin\n"},
+		{name: "complete builtin", command: "complete", isBuiltin: true, want: "complete is a shell builtin\n"},
 		{name: "invalid command", command: "invalid_command", isBuiltin: false, want: "invalid_command: not found\n"},
 	}
 

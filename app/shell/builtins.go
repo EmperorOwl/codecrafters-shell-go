@@ -8,11 +8,12 @@ import (
 )
 
 var shellBuiltins = map[string]struct{}{
-	"cd":   {},
-	"echo": {},
-	"exit": {},
-	"pwd":  {},
-	"type": {},
+	"cd":       {},
+	"complete": {},
+	"echo":     {},
+	"exit":     {},
+	"pwd":      {},
+	"type":     {},
 }
 
 func IsShellBuiltin(command string) bool {
@@ -56,6 +57,8 @@ func TryBuiltin(fields []string, stdout, stderr io.Writer) (handled bool, should
 			target = fields[1]
 		}
 		builtins.Type(stdout, target, IsShellBuiltin(target))
+		return true, false
+	case "complete":
 		return true, false
 	default:
 		return false, false

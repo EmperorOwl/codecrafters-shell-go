@@ -39,6 +39,11 @@ func TestTryBuiltin(t *testing.T) {
 			wantHandled: true,
 		},
 		{
+			name:        "complete is handled",
+			fields:      []string{"complete", "-C", "/path/to/script", "git"},
+			wantHandled: true,
+		},
+		{
 			name:        "unknown command is not handled",
 			fields:      []string{"xyz"},
 			wantHandled: false,
