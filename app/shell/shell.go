@@ -10,7 +10,7 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
-	"github.com/codecrafters-io/shell-starter-go/app/shellio"
+	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 	"golang.org/x/term"
 )
 
@@ -25,7 +25,7 @@ func CommandNotFoundMessage(command string) string {
 }
 
 func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
-	stdinFile, rawMode := shellio.TerminalStdin(shellStdin)
+	stdinFile, rawMode := terminal.Stdin(shellStdin)
 	if rawMode {
 		oldState, err := term.MakeRaw(int(stdinFile.Fd()))
 		if err != nil {
@@ -37,7 +37,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 
 	reader := bufio.NewReader(shellStdin)
 	for {
-		line, eof, err := shellio.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath())
+		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath())
 		if err != nil {
 			return err
 		}
@@ -65,13 +65,13 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		if redirectErr != nil {
 			return redirectErr
 		}
-		stdout = wrapTerminalWriter(stdout, rawMode && redirect.StdoutPath == "")
+		stdout = terminal.WrapWriter(stdout, rawMode && redirect.StdoutPath == "")
 		stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect.StderrPath, redirect.StderrAppend)
 		if redirectErr != nil {
 			closeStdout()
 			return redirectErr
 		}
-		stderr = wrapTerminalWriter(stderr, rawMode && redirect.StderrPath == "")
+		stderr = terminal.WrapWriter(stderr, rawMode && redirect.StderrPath == "")
 		closeRedirects := func() {
 			closeStdout()
 			closeStderr()
@@ -101,7 +101,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		}
 
 		closeRedirects()
-		fmt.Fprintf(wrapTerminalWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
+		fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
 
 		if eof {
 			return nil

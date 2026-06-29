@@ -1,11 +1,11 @@
-package shell
+package terminal
 
 import (
 	"bytes"
 	"testing"
 )
 
-func TestTerminalWriter(t *testing.T) {
+func TestWrapWriter(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -31,7 +31,7 @@ func TestTerminalWriter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			writer := terminalWriter{w: &buf}
+			writer := WrapWriter(&buf, true)
 			if _, err := writer.Write([]byte(tt.input)); err != nil {
 				t.Fatalf("Write() error = %v", err)
 			}

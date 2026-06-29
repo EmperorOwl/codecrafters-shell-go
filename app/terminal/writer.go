@@ -1,13 +1,13 @@
-package shell
+package terminal
 
 import "io"
 
-// terminalWriter translates LF to CRLF so output starts at column 0 in raw mode.
-type terminalWriter struct {
+// lfWriter translates LF to CRLF so output starts at column 0 in raw mode.
+type lfWriter struct {
 	w io.Writer
 }
 
-func (t terminalWriter) Write(p []byte) (int, error) {
+func (t lfWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	for i, b := range p {
 		if b == '\n' && (i == 0 || p[i-1] != '\r') {
@@ -23,9 +23,10 @@ func (t terminalWriter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-func wrapTerminalWriter(w io.Writer, rawMode bool) io.Writer {
+// WrapWriter returns a writer that translates LF to CRLF when rawMode is true.
+func WrapWriter(w io.Writer, rawMode bool) io.Writer {
 	if rawMode {
-		return terminalWriter{w: w}
+		return lfWriter{w: w}
 	}
 	return w
 }

@@ -1,4 +1,4 @@
-package shellio
+package terminal
 
 import (
 	"io"

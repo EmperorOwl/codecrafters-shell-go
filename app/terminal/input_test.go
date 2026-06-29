@@ -1,4 +1,4 @@
-package shellio
+package terminal
 
 import (
 	"bufio"
@@ -11,12 +11,12 @@ func TestReadLineRaw(t *testing.T) {
 	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 
 	tests := []struct {
-		name          string
-		executables   []string
-		input         string
-		wantLine      string
-		wantEOF       bool
-		wantOut       string
+		name        string
+		executables []string
+		input       string
+		wantLine    string
+		wantEOF     bool
+		wantOut     string
 	}{
 		{
 			name:     "unix enter submits line",

@@ -1,4 +1,4 @@
-package shellio
+package terminal
 
 import (
 	"bufio"
@@ -15,9 +15,9 @@ import (
 // on the next readLineRaw call instead of submitting an empty line.
 var skipNextLF bool
 
-// TerminalStdin reports whether stdin is an interactive terminal.
+// Stdin reports whether stdin is an interactive terminal.
 // Raw-mode input is only enabled when both are true.
-func TerminalStdin(r io.Reader) (*os.File, bool) {
+func Stdin(r io.Reader) (*os.File, bool) {
 	f, ok := r.(*os.File)
 	if !ok {
 		return nil, false
