@@ -8,7 +8,7 @@ func TestApplyTab(t *testing.T) {
 	tests := []struct {
 		name         string
 		executables  []string
-		files        []string
+		fileDirs     map[string][]string
 		buffer       string
 		wantBuffer   string
 		wantListings []string
@@ -73,33 +73,52 @@ func TestApplyTab(t *testing.T) {
 		},
 		{
 			name:       "completes partial filename",
-			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			fileDirs:   map[string][]string{"": {"hello_world.py", "notes.md", "readme.txt"}},
 			buffer:     "cat re",
 			wantBuffer: "cat readme.txt ",
 		},
 		{
 			name:       "completes hello prefix",
-			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			fileDirs:   map[string][]string{"": {"hello_world.py", "notes.md", "readme.txt"}},
 			buffer:     "cat hello",
 			wantBuffer: "cat hello_world.py ",
 		},
 		{
 			name:       "completes for unknown command",
-			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			fileDirs:   map[string][]string{"": {"hello_world.py", "notes.md", "readme.txt"}},
 			buffer:     "xyz read",
 			wantBuffer: "xyz readme.txt ",
 		},
 		{
 			name:       "no file match leaves buffer unchanged",
-			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			fileDirs:   map[string][]string{"": {"hello_world.py", "notes.md", "readme.txt"}},
 			buffer:     "cat missing",
 			wantBuffer: "cat missing",
+		},
+		{
+			name:       "completes nested path",
+			fileDirs:   map[string][]string{"path/to/": {"file.txt", "other.txt"}},
+			buffer:     "cat path/to/f",
+			wantBuffer: "cat path/to/file.txt ",
+		},
+		{
+			name:       "no nested match leaves buffer unchanged",
+			fileDirs:   map[string][]string{"path/to/": {"file.txt", "other.txt"}},
+			buffer:     "cat path/to/missing",
+			wantBuffer: "cat path/to/missing",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtins, tt.executables, tt.files, tt.buffer)
+			listFiles := func(dir string) []string {
+				if tt.fileDirs == nil {
+					return nil
+				}
+				return tt.fileDirs[dir]
+			}
+
+			gotBuffer, gotListings := ApplyTab(builtins, tt.executables, listFiles, tt.buffer)
 			if gotBuffer != tt.wantBuffer {
 				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
 			}

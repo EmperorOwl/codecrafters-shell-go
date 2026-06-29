@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+// FileLister returns sorted filenames in dir relative to the current working directory.
+// An empty dir lists the current working directory.
+type FileLister func(dir string) []string
+
 func findMatches(commands []string, prefix string) []string {
 	var result []string
 	for _, name := range commands {
@@ -34,24 +38,32 @@ func longestCommonPrefix(values []string) string {
 	return prefix
 }
 
-func applyFileTab(files []string, buffer string) (newBuffer string, listings []string) {
+func applyFileTab(listFiles FileLister, buffer string) (newBuffer string, listings []string) {
 	lastSpace := strings.LastIndex(buffer, " ")
 	if lastSpace < 0 {
 		return buffer, nil
 	}
 
-	prefix := buffer[lastSpace+1:]
-	matched := findMatches(files, prefix)
+	token := buffer[lastSpace+1:]
+	dirPath := ""
+	prefix := token
+
+	if idx := strings.LastIndex(token, "/"); idx >= 0 {
+		dirPath = token[:idx+1]
+		prefix = token[idx+1:]
+	}
+
+	matched := findMatches(listFiles(dirPath), prefix)
 
 	switch len(matched) {
 	case 0:
 		return buffer, nil
 	case 1:
-		return buffer[:lastSpace+1] + matched[0] + " ", nil
+		return buffer[:lastSpace+1] + dirPath + matched[0] + " ", nil
 	default:
 		lcp := longestCommonPrefix(matched)
 		if len(lcp) > len(prefix) {
-			return buffer[:lastSpace+1] + lcp, nil
+			return buffer[:lastSpace+1] + dirPath + lcp, nil
 		}
 		return buffer, matched
 	}
@@ -59,9 +71,9 @@ func applyFileTab(files []string, buffer string) (newBuffer string, listings []s
 
 // ApplyTab returns an updated command buffer after Tab.
 // listings is non-empty when multiple commands share the prefix.
-func ApplyTab(builtins, executables, files []string, buffer string) (newBuffer string, listings []string) {
+func ApplyTab(builtins, executables []string, listFiles FileLister, buffer string) (newBuffer string, listings []string) {
 	if strings.Contains(buffer, " ") {
-		return applyFileTab(files, buffer)
+		return applyFileTab(listFiles, buffer)
 	}
 
 	matched := append(findMatches(builtins, buffer), findMatches(executables, buffer)...)

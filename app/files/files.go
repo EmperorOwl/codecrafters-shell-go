@@ -7,7 +7,17 @@ import (
 
 // ListInCurrentDir returns sorted filenames (not directories) in the current working directory.
 func ListInCurrentDir() []string {
-	entries, err := os.ReadDir(".")
+	return ListInDir("")
+}
+
+// ListInDir returns sorted filenames (not directories) in dir relative to the current working directory.
+// An empty dir lists the current working directory.
+func ListInDir(dir string) []string {
+	if dir == "" {
+		dir = "."
+	}
+
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
