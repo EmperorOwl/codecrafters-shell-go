@@ -7,7 +7,7 @@ import (
 )
 
 func TestComplete(t *testing.T) {
-	runCompleter := CompleterFunc(func(scriptPath string) ([]string, error) {
+	runCompleter := CompleterFunc(func(scriptPath, command, currentWord, previousWord string) ([]string, error) {
 		return []string{scriptPath}, nil
 	})
 

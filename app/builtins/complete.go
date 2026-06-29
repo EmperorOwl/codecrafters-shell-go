@@ -6,7 +6,7 @@ import (
 )
 
 // CompleterFunc runs a completer script and returns completion candidates.
-type CompleterFunc func(scriptPath string) ([]string, error)
+type CompleterFunc func(scriptPath, command, currentWord, previousWord string) ([]string, error)
 
 // Completer holds a registered completer script and its runner.
 type Completer struct {
