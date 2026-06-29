@@ -3,27 +3,15 @@ package terminal
 import (
 	"bufio"
 	"io"
-	"os"
 	"slices"
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
-	"golang.org/x/term"
 )
 
 // skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
 // on the next readLineRaw call instead of submitting an empty line.
 var skipNextLF bool
-
-// Stdin reports whether stdin is an interactive terminal.
-// Raw-mode input is only enabled when both are true.
-func Stdin(r io.Reader) (*os.File, bool) {
-	f, ok := r.(*os.File)
-	if !ok {
-		return nil, false
-	}
-	return f, term.IsTerminal(int(f.Fd()))
-}
 
 func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executables []string, listFiles completion.FileLister) (line string, eof bool, err error) {
 	if rawMode {

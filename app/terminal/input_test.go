@@ -159,3 +159,41 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 		t.Errorf("combined output = %q, want %q", got, wantOut)
 	}
 }
+
+func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
+	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
+	listFiles := func(dir string) []string {
+		if dir == "" {
+			return []string{"app/"}
+		}
+		return nil
+	}
+
+	var out bytes.Buffer
+
+	skipNextLF = false
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles)
+	if err != nil {
+		t.Fatalf("first ReadLine() error = %v", err)
+	}
+	if line != "ls app/" {
+		t.Errorf("first ReadLine() line = %q, want %q", line, "ls app/")
+	}
+	if eof {
+		t.Error("first ReadLine() eof = true, want false")
+	}
+
+	// Simulates a second prompt after an external command. The shell re-enables
+	// raw mode via Session.PrepareRead; tab completion must still work here.
+	skipNextLF = false
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles)
+	if err != nil {
+		t.Fatalf("second ReadLine() error = %v", err)
+	}
+	if line != "ls app/" {
+		t.Errorf("second ReadLine() line = %q, want %q", line, "ls app/")
+	}
+	if eof {
+		t.Error("second ReadLine() eof = true, want false")
+	}
+}

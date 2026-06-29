@@ -12,7 +12,6 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
-	"golang.org/x/term"
 )
 
 type Shell struct{}
@@ -26,18 +25,13 @@ func CommandNotFoundMessage(command string) string {
 }
 
 func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
-	stdinFile, rawMode := terminal.Stdin(shellStdin)
-	if rawMode {
-		oldState, err := term.MakeRaw(int(stdinFile.Fd()))
-		if err != nil {
-			rawMode = false
-		} else {
-			defer term.Restore(int(stdinFile.Fd()), oldState)
-		}
-	}
+	session := terminal.NewSession(shellStdin)
+	defer session.Close()
 
 	reader := bufio.NewReader(shellStdin)
 	for {
+		rawMode := session.PrepareRead()
+
 		cwd, err := os.Getwd()
 		if err != nil {
 			return err
