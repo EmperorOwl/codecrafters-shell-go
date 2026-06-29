@@ -22,7 +22,7 @@ func ExecuteExternalProgram(fields []string, stdout, stderr io.Writer) (executed
 		return false, nil
 	}
 
-	path, ok := shellpath.FindExecutableInPath(fields[0], os.Getenv("PATH"))
+	path, ok := shellpath.FindExecutableInPath(fields[0])
 	if !ok {
 		return false, nil
 	}

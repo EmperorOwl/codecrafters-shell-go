@@ -8,6 +8,8 @@ import (
 )
 
 func TestReadLineRaw(t *testing.T) {
+	t.Setenv("PATH", "")
+
 	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 
 	tests := []struct {
