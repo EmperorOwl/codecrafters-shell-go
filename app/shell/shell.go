@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/codecrafters-io/shell-starter-go/app/files"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
@@ -37,7 +38,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 
 	reader := bufio.NewReader(shellStdin)
 	for {
-		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath())
+		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), files.ListInCurrentDir())
 		if err != nil {
 			return err
 		}

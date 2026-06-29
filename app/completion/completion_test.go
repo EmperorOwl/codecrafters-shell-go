@@ -8,6 +8,7 @@ func TestApplyTab(t *testing.T) {
 	tests := []struct {
 		name         string
 		executables  []string
+		files        []string
 		buffer       string
 		wantBuffer   string
 		wantListings []string
@@ -40,10 +41,10 @@ func TestApplyTab(t *testing.T) {
 			wantListings: builtins,
 		},
 		{
-			name:         "completes executable",
-			executables:  []string{"custom_executable"},
-			buffer:       "custom",
-			wantBuffer:   "custom_executable ",
+			name:        "completes executable",
+			executables: []string{"custom_executable"},
+			buffer:      "custom",
+			wantBuffer:  "custom_executable ",
 		},
 		{
 			name:         "ambiguous executable prefix lists matches",
@@ -70,11 +71,35 @@ func TestApplyTab(t *testing.T) {
 			buffer:      "xyz_foo_bar_",
 			wantBuffer:  "xyz_foo_bar_baz ",
 		},
+		{
+			name:       "completes partial filename",
+			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			buffer:     "cat re",
+			wantBuffer: "cat readme.txt ",
+		},
+		{
+			name:       "completes hello prefix",
+			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			buffer:     "cat hello",
+			wantBuffer: "cat hello_world.py ",
+		},
+		{
+			name:       "completes for unknown command",
+			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			buffer:     "xyz read",
+			wantBuffer: "xyz readme.txt ",
+		},
+		{
+			name:       "no file match leaves buffer unchanged",
+			files:      []string{"hello_world.py", "notes.md", "readme.txt"},
+			buffer:     "cat missing",
+			wantBuffer: "cat missing",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtins, tt.executables, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(builtins, tt.executables, tt.files, tt.buffer)
 			if gotBuffer != tt.wantBuffer {
 				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
 			}

@@ -25,9 +25,9 @@ func Stdin(r io.Reader) (*os.File, bool) {
 	return f, term.IsTerminal(int(f.Fd()))
 }
 
-func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executables []string) (line string, eof bool, err error) {
+func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executables, files []string) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w, builtins, executables)
+		return readLineRaw(reader, w, builtins, executables, files)
 	}
 
 	writePrompt(w, false)
@@ -41,7 +41,7 @@ func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, builtins, executa
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables []string) (string, bool, error) {
+func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables, files []string) (string, bool, error) {
 	writePrompt(w, true)
 
 	var buffer []byte
@@ -61,7 +61,7 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, builtins, executables []stri
 
 		switch b {
 		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(builtins, executables, string(buffer))
+			newBuffer, listings := completion.ApplyTab(builtins, executables, files, string(buffer))
 			switch {
 			case len(listings) > 0:
 				if slices.Equal(pendingListings, listings) {

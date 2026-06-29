@@ -103,7 +103,7 @@ func TestReadLineRaw(t *testing.T) {
 			reader := bufio.NewReader(strings.NewReader(tt.input))
 			var out bytes.Buffer
 
-			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables)
+			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables, nil)
 			if err != nil {
 				t.Fatalf("ReadLine() error = %v", err)
 			}
@@ -126,7 +126,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 
 	var out bytes.Buffer
 
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil, nil)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -140,7 +140,7 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil, nil)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}
