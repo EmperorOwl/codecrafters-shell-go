@@ -7,21 +7,15 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	"golang.org/x/term"
 )
 
 type Shell struct{}
 
-const Prompt = "$ "
-
 func New() *Shell {
 	return &Shell{}
-}
-
-func WritePrompt(w io.Writer) {
-	io.WriteString(w, Prompt)
 }
 
 func CommandNotFoundMessage(command string) string {
@@ -29,27 +23,36 @@ func CommandNotFoundMessage(command string) string {
 }
 
 func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
+	stdinFile, rawMode := terminalStdin(shellStdin)
+	if rawMode {
+		oldState, err := term.MakeRaw(int(stdinFile.Fd()))
+		if err != nil {
+			rawMode = false
+		} else {
+			defer term.Restore(int(stdinFile.Fd()), oldState)
+		}
+	}
+
 	reader := bufio.NewReader(shellStdin)
 	for {
-		WritePrompt(shellStdout)
-
-		line, err := reader.ReadString('\n')
-		if err == io.EOF {
-			if strings.TrimSpace(line) == "" {
-				return nil
-			}
-		} else if err != nil {
+		line, eof, err := readLine(reader, shellStdout, rawMode)
+		if err != nil {
 			return err
 		}
+		if eof && line == "" {
+			return nil
+		}
 
-		line = strings.TrimSpace(line)
 		if line == "" {
+			if eof {
+				return nil
+			}
 			continue
 		}
 
 		fields, redirect := parser.ParseRedirect(parser.Tokenize(line))
 		if len(fields) == 0 {
-			if err == io.EOF {
+			if eof {
 				return nil
 			}
 			continue
@@ -60,11 +63,13 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		if redirectErr != nil {
 			return redirectErr
 		}
+		stdout = wrapTerminalWriter(stdout, rawMode && redirect.StdoutPath == "")
 		stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect.StderrPath, redirect.StderrAppend)
 		if redirectErr != nil {
 			closeStdout()
 			return redirectErr
 		}
+		stderr = wrapTerminalWriter(stderr, rawMode && redirect.StderrPath == "")
 		closeRedirects := func() {
 			closeStdout()
 			closeStderr()
@@ -75,7 +80,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			if shouldExit {
 				return nil
 			}
-			if err == io.EOF {
+			if eof {
 				return nil
 			}
 			continue
@@ -87,16 +92,16 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			if execErr != nil && !errors.As(execErr, &exitErr) {
 				return execErr
 			}
-			if err == io.EOF {
+			if eof {
 				return nil
 			}
 			continue
 		}
 
 		closeRedirects()
-		fmt.Fprintf(shellStdout, "%s\n", CommandNotFoundMessage(command))
+		fmt.Fprintf(wrapTerminalWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
 
-		if err == io.EOF {
+		if eof {
 			return nil
 		}
 	}
