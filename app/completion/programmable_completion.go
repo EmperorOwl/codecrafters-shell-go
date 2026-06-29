@@ -3,7 +3,6 @@ package completion
 import (
 	"os"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -100,15 +99,23 @@ func applyProgrammableTab(buffer string, completer builtins.Completer) (newBuffe
 		return buffer, nil
 	}
 
-	switch len(candidates) {
+	lastSpace := strings.LastIndex(buffer, " ")
+	if lastSpace < 0 {
+		return buffer, nil
+	}
+
+	prefix := buffer[:lastSpace+1]
+	matches := findMatches(candidates, opts.CurrentWord)
+	switch len(matches) {
+	case 0:
+		return buffer, nil
 	case 1:
-		lastSpace := strings.LastIndex(buffer, " ")
-		if lastSpace < 0 {
-			return buffer, nil
-		}
-		return buffer[:lastSpace+1] + candidates[0] + " ", nil
+		return prefix + matches[0] + " ", nil
 	default:
-		slices.Sort(candidates)
-		return buffer, candidates
+		lcp := longestCommonPrefix(matches)
+		if len(lcp) > len(opts.CurrentWord) {
+			return prefix + lcp, nil
+		}
+		return buffer, matches
 	}
 }

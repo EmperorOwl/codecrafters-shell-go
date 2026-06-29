@@ -88,6 +88,18 @@ func TestApplyTabProgrammableTab(t *testing.T) {
 			wantBuffer:   "git sta",
 			wantListings: []string{"stash", "status"},
 		},
+		{
+			name:       "completes to longest common prefix",
+			buffer:     "git c",
+			candidates: []string{"checkout", "cherry-pick"},
+			wantBuffer: "git che",
+		},
+		{
+			name:       "completes single remaining match",
+			buffer:     "git chec",
+			candidates: []string{"checkout", "cherry-pick"},
+			wantBuffer: "git checkout ",
+		},
 	}
 
 	for _, tt := range tests {
