@@ -10,6 +10,10 @@ import (
 	"golang.org/x/term"
 )
 
+// skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
+// on the next readLineRaw call instead of submitting an empty line.
+var skipNextLF bool
+
 const Prompt = "$ "
 
 func WritePrompt(w io.Writer) {
@@ -46,9 +50,6 @@ func readLineRaw(reader *bufio.Reader, w io.Writer) (string, bool, error) {
 	io.WriteString(w, "\r$ ")
 
 	var buffer []byte
-	// pendingNL is set after CR so a following LF from Windows CRLF Enter
-	// is consumed without submitting the line a second time.
-	pendingNL := false
 
 	for {
 		b, err := reader.ReadByte()
@@ -77,11 +78,12 @@ func readLineRaw(reader *bufio.Reader, w io.Writer) (string, bool, error) {
 				redrawLine(w, newBuffer)
 			}
 		case '\r': // Enter on Windows
+			skipNextLF = true
 			io.WriteString(w, "\r\n")
 			return string(buffer), false, nil
 		case '\n': // Enter on Unix; skip LF when it follows CR on Windows
-			if pendingNL {
-				pendingNL = false
+			if skipNextLF {
+				skipNextLF = false
 				continue
 			}
 			io.WriteString(w, "\r\n")
