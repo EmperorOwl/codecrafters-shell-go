@@ -47,7 +47,7 @@ func TestListInDir(t *testing.T) {
 		{
 			name: "current directory",
 			dir:  "",
-			want: []string{"notes.md", "readme.txt"},
+			want: []string{"notes.md", "path/", "readme.txt", "subdir/"},
 		},
 		{
 			name: "nested directory",
@@ -94,7 +94,7 @@ func TestListInCurrentDir(t *testing.T) {
 	}
 
 	got := ListInCurrentDir()
-	want := []string{"notes.md", "readme.txt"}
+	want := []string{"notes.md", "readme.txt", "subdir/"}
 	if len(got) != len(want) {
 		t.Fatalf("ListInCurrentDir() = %v, want %v", got, want)
 	}

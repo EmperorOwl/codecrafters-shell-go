@@ -107,6 +107,24 @@ func TestApplyTab(t *testing.T) {
 			buffer:     "cat path/to/missing",
 			wantBuffer: "cat path/to/missing",
 		},
+		{
+			name:       "completes directory with trailing slash",
+			fileDirs:   map[string][]string{"": {"project/", "readme.txt"}},
+			buffer:     "cd proj",
+			wantBuffer: "cd project/",
+		},
+		{
+			name:       "completes lone directory after command",
+			fileDirs:   map[string][]string{"": {"pig/"}},
+			buffer:     "ls ",
+			wantBuffer: "ls pig/",
+		},
+		{
+			name:       "completes nested directory",
+			fileDirs:   map[string][]string{"pig/": {"dog/"}},
+			buffer:     "ls pig/",
+			wantBuffer: "ls pig/dog/",
+		},
 	}
 
 	for _, tt := range tests {

@@ -5,13 +5,14 @@ import (
 	"slices"
 )
 
-// ListInCurrentDir returns sorted filenames (not directories) in the current working directory.
+// ListInCurrentDir returns sorted file and directory names in the current working directory.
+// Directory names include a trailing slash.
 func ListInCurrentDir() []string {
 	return ListInDir("")
 }
 
-// ListInDir returns sorted filenames (not directories) in dir relative to the current working directory.
-// An empty dir lists the current working directory.
+// ListInDir returns sorted file and directory names in dir relative to the current working directory.
+// An empty dir lists the current working directory. Directory names include a trailing slash.
 func ListInDir(dir string) []string {
 	if dir == "" {
 		dir = "."
@@ -24,10 +25,11 @@ func ListInDir(dir string) []string {
 
 	var result []string
 	for _, entry := range entries {
+		name := entry.Name()
 		if entry.IsDir() {
-			continue
+			name += "/"
 		}
-		result = append(result, entry.Name())
+		result = append(result, name)
 	}
 	slices.Sort(result)
 	return result
