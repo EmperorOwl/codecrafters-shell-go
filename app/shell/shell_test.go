@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -121,5 +123,23 @@ func TestShellRun(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestShellRunBackground(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sleep is not available on Windows")
+	}
+
+	shell := New()
+	var out bytes.Buffer
+	err := shell.Run(strings.NewReader("sleep 30 &\n"), &out, io.Discard)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	jobLinePattern := regexp.MustCompile(`^\$ \[1\] \d+\n\$ $`)
+	if !jobLinePattern.MatchString(out.String()) {
+		t.Errorf("Run() output = %q, want pattern $ [1] <pid>\\n$ ", out.String())
 	}
 }

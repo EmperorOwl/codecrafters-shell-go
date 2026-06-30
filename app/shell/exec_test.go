@@ -2,6 +2,7 @@ package shell
 
 import (
 	"io"
+	"runtime"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -49,5 +50,33 @@ func TestNewExternalCommand(t *testing.T) {
 				t.Errorf("Args mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestStartExternalProgram(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sleep is not available on Windows")
+	}
+
+	executed, pid, err := StartExternalProgram([]string{"sleep", "30"}, io.Discard, io.Discard)
+	if err != nil {
+		t.Fatalf("StartExternalProgram() error = %v", err)
+	}
+	if !executed {
+		t.Fatal("StartExternalProgram() executed = false, want true")
+	}
+	if pid <= 0 {
+		t.Fatalf("StartExternalProgram() pid = %d, want > 0", pid)
+	}
+
+	executed, pid, err = StartExternalProgram([]string{"missing_command_xyz"}, io.Discard, io.Discard)
+	if err != nil {
+		t.Fatalf("StartExternalProgram() error = %v", err)
+	}
+	if executed {
+		t.Fatalf("StartExternalProgram() executed = true, want false")
+	}
+	if pid != 0 {
+		t.Fatalf("StartExternalProgram() pid = %d, want 0", pid)
 	}
 }

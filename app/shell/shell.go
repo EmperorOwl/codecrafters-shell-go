@@ -15,7 +15,9 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 )
 
-type Shell struct{}
+type Shell struct {
+	nextJobID int
+}
 
 func New() *Shell {
 	return &Shell{}
@@ -58,6 +60,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		}
 
 		fields, redirect := parser.ParseRedirect(parser.Tokenize(line))
+		fields, background := parser.StripBackground(fields)
 		if len(fields) == 0 {
 			if eof {
 				return nil
@@ -86,6 +89,24 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			closeRedirects()
 			if shouldExit {
 				return nil
+			}
+			if eof {
+				return nil
+			}
+			continue
+		}
+
+		if background {
+			executed, pid, execErr := StartExternalProgram(fields, stdout, stderr)
+			closeRedirects()
+			if !executed {
+				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
+			} else {
+				if execErr != nil {
+					return execErr
+				}
+				s.nextJobID++
+				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "[%d] %d\n", s.nextJobID, pid)
 			}
 			if eof {
 				return nil

@@ -29,3 +29,20 @@ func ExecuteExternalProgram(fields []string, stdout, stderr io.Writer) (executed
 
 	return true, newExternalCommand(fields, path, stdout, stderr).Run()
 }
+
+func StartExternalProgram(fields []string, stdout, stderr io.Writer) (executed bool, pid int, err error) {
+	if len(fields) == 0 {
+		return false, 0, nil
+	}
+
+	path, ok := shellpath.FindExecutableInPath(fields[0])
+	if !ok {
+		return false, 0, nil
+	}
+
+	cmd := newExternalCommand(fields, path, stdout, stderr)
+	if err := cmd.Start(); err != nil {
+		return true, 0, err
+	}
+	return true, cmd.Process.Pid, nil
+}
