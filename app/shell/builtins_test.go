@@ -51,6 +51,11 @@ func TestTryBuiltin(t *testing.T) {
 			wantHandled: true,
 		},
 		{
+			name:        "jobs is handled",
+			fields:      []string{"jobs"},
+			wantHandled: true,
+		},
+		{
 			name:        "unknown command is not handled",
 			fields:      []string{"xyz"},
 			wantHandled: false,

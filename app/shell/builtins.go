@@ -12,6 +12,7 @@ var shellBuiltins = map[string]struct{}{
 	"complete": {},
 	"echo":     {},
 	"exit":     {},
+	"jobs":     {},
 	"pwd":      {},
 	"type":     {},
 }
@@ -60,6 +61,9 @@ func TryBuiltin(fields []string, stdout, stderr io.Writer, registeredCompleters 
 		return true, false
 	case "complete":
 		builtins.Complete(stdout, stderr, fields[1:], registeredCompleters)
+		return true, false
+	case "jobs":
+		builtins.Jobs(stdout)
 		return true, false
 	default:
 		return false, false
