@@ -58,5 +58,10 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 			Path: args[1],
 			Func: runCompleter,
 		}
+	case "-r":
+		if len(args) < 2 {
+			return
+		}
+		delete(registeredCompleters, args[1])
 	}
 }

@@ -53,6 +53,17 @@ func TestComplete(t *testing.T) {
 			wantOut: "",
 			wantErr: "",
 		},
+		{
+			name:                     "unregisters completion with -r",
+			registeredCompleters:     map[string]Completer{"git": {Path: "/path/to/script"}},
+			args:                     []string{"-r", "git"},
+			wantRegisteredCompleters: map[string]Completer{},
+		},
+		{
+			name:                     "ignores -r for unregistered command",
+			args:                     []string{"-r", "git"},
+			wantRegisteredCompleters: map[string]Completer{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -69,6 +80,9 @@ func TestComplete(t *testing.T) {
 				t.Errorf("Complete(%v) stderr = %q, want %q", tt.args, got, tt.wantErr)
 			}
 			if tt.wantRegisteredCompleters != nil {
+				if len(registeredCompleters) != len(tt.wantRegisteredCompleters) {
+					t.Fatalf("registeredCompleters has %d entries, want %d", len(registeredCompleters), len(tt.wantRegisteredCompleters))
+				}
 				for command, want := range tt.wantRegisteredCompleters {
 					got, ok := registeredCompleters[command]
 					if !ok {
