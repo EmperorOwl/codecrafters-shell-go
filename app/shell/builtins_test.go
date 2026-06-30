@@ -66,7 +66,7 @@ func TestTryBuiltin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			var errOut bytes.Buffer
-			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{})
+			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{}, nil)
 			if diff := cmp.Diff(tt.wantHandled, handled); diff != "" {
 				t.Errorf("TryBuiltin(%v) handled mismatch (-want +got):\n%s", tt.fields, diff)
 			}

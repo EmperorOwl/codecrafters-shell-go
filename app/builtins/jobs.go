@@ -1,7 +1,11 @@
 package builtins
 
-import "io"
+import (
+	"io"
 
-func Jobs(out io.Writer) {
-	// Background job listing will be added in a later stage.
+	"github.com/codecrafters-io/shell-starter-go/app/jobs"
+)
+
+func Jobs(out io.Writer, jobList []jobs.Job) {
+	jobs.WriteAll(out, jobList)
 }

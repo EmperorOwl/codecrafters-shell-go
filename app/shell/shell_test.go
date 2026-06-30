@@ -143,3 +143,21 @@ func TestShellRunBackground(t *testing.T) {
 		t.Errorf("Run() output = %q, want pattern $ [1] <pid>\\n$ ", out.String())
 	}
 }
+
+func TestShellRunJobs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sleep is not available on Windows")
+	}
+
+	shell := New()
+	var out bytes.Buffer
+	err := shell.Run(strings.NewReader("sleep 10 &\njobs\n"), &out, io.Discard)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	jobsLinePattern := regexp.MustCompile(`^\$ \[1\] \d+\n\$ \[1\]\+  Running                 sleep 10 &\n\$ $`)
+	if !jobsLinePattern.MatchString(out.String()) {
+		t.Errorf("Run() output = %q, want background start line and jobs listing", out.String())
+	}
+}

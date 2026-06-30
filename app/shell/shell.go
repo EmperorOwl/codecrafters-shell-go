@@ -10,6 +10,7 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/files"
+	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
@@ -17,6 +18,7 @@ import (
 
 type Shell struct {
 	nextJobID int
+	jobs      []jobs.Job
 }
 
 func New() *Shell {
@@ -85,7 +87,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			closeStderr()
 		}
 
-		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters); handled {
+		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters, s.jobs); handled {
 			closeRedirects()
 			if shouldExit {
 				return nil
@@ -105,8 +107,8 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 				if execErr != nil {
 					return execErr
 				}
-				s.nextJobID++
-				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "[%d] %d\n", s.nextJobID, pid)
+				jobNumber := jobs.AddJob(&s.jobs, &s.nextJobID, pid, line)
+				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "[%d] %d\n", jobNumber, pid)
 			}
 			if eof {
 				return nil
