@@ -11,6 +11,13 @@ Follow [Table-Driven Tests](https://go.dev/wiki/TableDrivenTests).
 ## Pattern
 
 ```go
+import (
+    "testing"
+
+    "github.com/google/go-cmp/cmp"
+    "github.com/google/go-cmp/cmp/cmpopts"
+)
+
 func TestParseArgs(t *testing.T) {
     tests := []struct {
         name  string
@@ -25,8 +32,8 @@ func TestParseArgs(t *testing.T) {
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             got := ParseArgs(tt.input)
-            if !reflect.DeepEqual(got, tt.want) {
-                t.Errorf("ParseArgs(%q) = %v, want %v", tt.input, got, tt.want)
+            if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+                t.Errorf("ParseArgs(%q) mismatch (-want +got):\n%s", tt.input, diff)
             }
         })
     }
@@ -38,5 +45,7 @@ func TestParseArgs(t *testing.T) {
 - Use a `tests` slice of anonymous structs; each row needs a descriptive `name`.
 - Run subtests with `t.Run(tt.name, ...)`.
 - Test one function or behavior per test function; add rows for edge cases.
+- Compare values with `github.com/google/go-cmp/cmp`; use `cmp.Diff(want, got)` and report the diff as `(-want +got)`.
+- Use `cmpopts.EquateEmpty()` when comparing slices or maps where `nil` and empty should match.
 - Prefer `t.Errorf` / `t.Fatalf` with context over bare `t.Error`.
 - Place tests next to the code they cover (`foo.go` → `foo_test.go`, same package).
