@@ -27,15 +27,23 @@ func AddJob(jobs *[]Job, nextID *int, pid int, command string) int {
 
 func WriteAll(out io.Writer, jobs []Job) {
 	for i, job := range jobs {
-		fmt.Fprintln(out, formatLine(job, i == len(jobs)-1))
+		fmt.Fprintln(out, formatLine(job, i, len(jobs)))
 	}
 }
 
-func formatLine(job Job, isCurrent bool) string {
-	marker := " "
-	if isCurrent {
-		marker = "+"
+func markerForIndex(index, count int) string {
+	switch {
+	case index == count-1:
+		return "+"
+	case index == count-2:
+		return "-"
+	default:
+		return " "
 	}
+}
+
+func formatLine(job Job, index, count int) string {
+	marker := markerForIndex(index, count)
 
 	status := job.Status
 	if len(status) < 24 {

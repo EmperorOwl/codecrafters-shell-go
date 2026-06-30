@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,14 +37,13 @@ func TestAddJob(t *testing.T) {
 
 func TestWriteAll(t *testing.T) {
 	tests := []struct {
-		name string
-		jobs []Job
-		want string
+		name      string
+		jobs      []Job
+		wantLines []string
 	}{
 		{
 			name: "no jobs",
 			jobs: nil,
-			want: "",
 		},
 		{
 			name: "one running job",
@@ -52,15 +52,33 @@ func TestWriteAll(t *testing.T) {
 				Command: "sleep 10 &",
 				Status:  "Running",
 			}},
-			want: "[1]+  Running                 sleep 10 &\n",
+			wantLines: []string{
+				"[1]+  Running                 sleep 10 &",
+			},
 		},
 		{
-			name: "most recent job gets plus marker",
+			name: "two jobs mark current and previous",
 			jobs: []Job{
-				{Number: 1, Command: "sleep 5 &", Status: "Running"},
-				{Number: 2, Command: "sleep 10 &", Status: "Running"},
+				{Number: 1, Command: "sleep 10 &", Status: "Running"},
+				{Number: 2, Command: "sleep 20 &", Status: "Running"},
 			},
-			want: "[1]   Running                 sleep 5 &\n[2]+  Running                 sleep 10 &\n",
+			wantLines: []string{
+				"[1]-  Running                 sleep 10 &",
+				"[2]+  Running                 sleep 20 &",
+			},
+		},
+		{
+			name: "three jobs mark current, previous, and space",
+			jobs: []Job{
+				{Number: 1, Command: "sleep 10 &", Status: "Running"},
+				{Number: 2, Command: "sleep 20 &", Status: "Running"},
+				{Number: 3, Command: "sleep 30 &", Status: "Running"},
+			},
+			wantLines: []string{
+				"[1]   Running                 sleep 10 &",
+				"[2]-  Running                 sleep 20 &",
+				"[3]+  Running                 sleep 30 &",
+			},
 		},
 	}
 
@@ -68,7 +86,12 @@ func TestWriteAll(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			WriteAll(&out, tt.jobs)
-			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
+
+			want := ""
+			if len(tt.wantLines) > 0 {
+				want = strings.Join(tt.wantLines, "\n") + "\n"
+			}
+			if diff := cmp.Diff(want, out.String()); diff != "" {
 				t.Errorf("WriteAll() output mismatch (-want +got):\n%s", diff)
 			}
 		})

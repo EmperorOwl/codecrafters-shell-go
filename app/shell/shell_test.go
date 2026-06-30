@@ -161,3 +161,26 @@ func TestShellRunJobs(t *testing.T) {
 		t.Errorf("Run() output = %q, want background start line and jobs listing", out.String())
 	}
 }
+
+func TestShellRunMultipleJobs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sleep is not available on Windows")
+	}
+
+	shell := New()
+	var out bytes.Buffer
+	input := "sleep 10 &\njobs\nsleep 20 &\njobs\nsleep 30 &\njobs\n"
+	err := shell.Run(strings.NewReader(input), &out, io.Discard)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	wantPattern := regexp.MustCompile(
+		`^\$ \[1\] \d+\n\$ \[1\]\+  Running                 sleep 10 &\n` +
+			`\$ \[2\] \d+\n\$ \[1\]-  Running                 sleep 10 &\n\$ \[2\]\+  Running                 sleep 20 &\n` +
+			`\$ \[3\] \d+\n\$ \[1\]   Running                 sleep 10 &\n\$ \[2\]-  Running                 sleep 20 &\n\$ \[3\]\+  Running                 sleep 30 &\n\$ $`,
+	)
+	if !wantPattern.MatchString(out.String()) {
+		t.Errorf("Run() output = %q, want sequential jobs listings with correct markers", out.String())
+	}
+}
