@@ -58,7 +58,7 @@ func TestStartExternalProgram(t *testing.T) {
 		t.Skip("sleep is not available on Windows")
 	}
 
-	executed, pid, err := StartExternalProgram([]string{"sleep", "30"}, io.Discard, io.Discard)
+	executed, pid, cmd, err := StartExternalProgram([]string{"sleep", "30"}, io.Discard, io.Discard)
 	if err != nil {
 		t.Fatalf("StartExternalProgram() error = %v", err)
 	}
@@ -68,8 +68,12 @@ func TestStartExternalProgram(t *testing.T) {
 	if pid <= 0 {
 		t.Fatalf("StartExternalProgram() pid = %d, want > 0", pid)
 	}
+	if cmd == nil {
+		t.Fatal("StartExternalProgram() cmd = nil, want non-nil")
+	}
+	_ = cmd.Process.Kill()
 
-	executed, pid, err = StartExternalProgram([]string{"missing_command_xyz"}, io.Discard, io.Discard)
+	executed, pid, cmd, err = StartExternalProgram([]string{"missing_command_xyz"}, io.Discard, io.Discard)
 	if err != nil {
 		t.Fatalf("StartExternalProgram() error = %v", err)
 	}

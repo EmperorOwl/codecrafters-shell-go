@@ -4,6 +4,12 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
+)
+
+const (
+	StatusRunning = "Running"
+	StatusDone    = "Done"
 )
 
 type Job struct {
@@ -13,35 +19,62 @@ type Job struct {
 	Status  string
 }
 
-func AddJob(jobs *[]Job, nextID *int, pid int, command string) int {
-	*nextID++
+type JobTable struct {
+	mu     sync.Mutex
+	nextID int
+	jobs   []Job
+}
+
+func (t *JobTable) Add(pid int, command string) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.nextID++
 	job := Job{
-		Number:  *nextID,
+		Number:  t.nextID,
 		PID:     pid,
 		Command: command,
-		Status:  "Running",
+		Status:  StatusRunning,
 	}
-	*jobs = append(*jobs, job)
+	t.jobs = append(t.jobs, job)
 	return job.Number
 }
 
-func WriteAll(out io.Writer, jobList *[]Job) {
-	WriteAllWithChecker(out, jobList, processExited)
-}
+func (t *JobTable) MarkDone(jobNumber int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-func WriteAllWithChecker(out io.Writer, jobList *[]Job, hasExited func(int) bool) {
-	if jobList == nil {
+	for i, job := range t.jobs {
+		if job.Number != jobNumber {
+			continue
+		}
+		t.jobs[i].Status = StatusDone
+		t.jobs[i].Command = strings.TrimSuffix(job.Command, " &")
 		return
 	}
-	if hasExited == nil {
-		hasExited = processExited
-	}
+}
 
-	display, remaining := reapJobs(*jobList, hasExited)
-	for i, job := range display {
-		fmt.Fprintln(out, formatLine(job, i, len(display)))
+func (t *JobTable) ListForDisplay() []Job {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	display := make([]Job, len(t.jobs))
+	copy(display, t.jobs)
+
+	remaining := t.jobs[:0]
+	for _, job := range t.jobs {
+		if job.Status == StatusRunning {
+			remaining = append(remaining, job)
+		}
 	}
-	*jobList = remaining
+	t.jobs = remaining
+	return display
+}
+
+func WriteAll(out io.Writer, jobList []Job) {
+	for i, job := range jobList {
+		fmt.Fprintln(out, formatLine(job, i, len(jobList)))
+	}
 }
 
 func markerForIndex(index, count int) string {

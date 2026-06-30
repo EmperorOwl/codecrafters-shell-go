@@ -17,8 +17,7 @@ import (
 )
 
 type Shell struct {
-	nextJobID int
-	jobs      []jobs.Job
+	jobs jobs.JobTable
 }
 
 func New() *Shell {
@@ -99,7 +98,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		}
 
 		if background {
-			executed, pid, execErr := StartExternalProgram(fields, stdout, stderr)
+			executed, pid, cmd, execErr := StartExternalProgram(fields, stdout, stderr)
 			closeRedirects()
 			if !executed {
 				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
@@ -107,7 +106,10 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 				if execErr != nil {
 					return execErr
 				}
-				jobNumber := jobs.AddJob(&s.jobs, &s.nextJobID, pid, line)
+				jobNumber := s.jobs.Add(pid, line)
+				startBackgroundWait(cmd, func() {
+					s.jobs.MarkDone(jobNumber)
+				})
 				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "[%d] %d\n", jobNumber, pid)
 			}
 			if eof {

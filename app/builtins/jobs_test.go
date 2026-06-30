@@ -7,46 +7,54 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestJobs(t *testing.T) {
-	neverExited := func(int) bool { return false }
-
 	tests := []struct {
 		name      string
 		jobs      []jobs.Job
-		hasExited func(int) bool
 		wantLines []string
+		wantJobs  []jobs.Job
 	}{
 		{
-			name:      "no jobs",
-			jobs:      nil,
-			hasExited: neverExited,
+			name:     "no jobs",
+			jobs:     nil,
+			wantJobs: nil,
 		},
 		{
 			name: "one running job",
 			jobs: []jobs.Job{{
 				Number:  1,
 				Command: "sleep 10 &",
-				Status:  "Running",
+				Status:  jobs.StatusRunning,
 			}},
-			hasExited: neverExited,
 			wantLines: []string{
 				"[1]+  Running                 sleep 10 &",
 			},
+			wantJobs: []jobs.Job{{
+				Number:  1,
+				Command: "sleep 10 &",
+				Status:  jobs.StatusRunning,
+			}},
 		},
 		{
-			name: "reaped job shown as done and removed",
+			name: "done job formatting",
 			jobs: []jobs.Job{{
 				Number:  1,
 				PID:     1,
-				Command: "cat /path/to/fifo &",
-				Status:  "Running",
+				Command: "cat /path/to/fifo",
+				Status:  jobs.StatusDone,
 			}},
-			hasExited: func(int) bool { return true },
 			wantLines: []string{
 				"[1]+  Done                    cat /path/to/fifo",
 			},
+			wantJobs: []jobs.Job{{
+				Number:  1,
+				PID:     1,
+				Command: "cat /path/to/fifo",
+				Status:  jobs.StatusDone,
+			}},
 		},
 	}
 
@@ -54,7 +62,7 @@ func TestJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			jobList := tt.jobs
-			Jobs(&out, &jobList, tt.hasExited)
+			Jobs(&out, jobList)
 
 			want := ""
 			if len(tt.wantLines) > 0 {
@@ -63,8 +71,8 @@ func TestJobs(t *testing.T) {
 			if diff := cmp.Diff(want, out.String()); diff != "" {
 				t.Errorf("Jobs() output mismatch (-want +got):\n%s", diff)
 			}
-			if tt.name == "reaped job shown as done and removed" && len(jobList) != 0 {
-				t.Errorf("Jobs() job list length = %d, want 0 after reaping", len(jobList))
+			if diff := cmp.Diff(tt.wantJobs, jobList, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("Jobs() job list mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

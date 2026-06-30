@@ -30,19 +30,29 @@ func ExecuteExternalProgram(fields []string, stdout, stderr io.Writer) (executed
 	return true, newExternalCommand(fields, path, stdout, stderr).Run()
 }
 
-func StartExternalProgram(fields []string, stdout, stderr io.Writer) (executed bool, pid int, err error) {
+func StartExternalProgram(fields []string, stdout, stderr io.Writer) (executed bool, pid int, cmd *exec.Cmd, err error) {
 	if len(fields) == 0 {
-		return false, 0, nil
+		return false, 0, nil, nil
 	}
 
 	path, ok := shellpath.FindExecutableInPath(fields[0])
 	if !ok {
-		return false, 0, nil
+		return false, 0, nil, nil
 	}
 
-	cmd := newExternalCommand(fields, path, stdout, stderr)
+	cmd = newExternalCommand(fields, path, stdout, stderr)
 	if err := cmd.Start(); err != nil {
-		return true, 0, err
+		return true, 0, nil, err
 	}
-	return true, cmd.Process.Pid, nil
+	return true, cmd.Process.Pid, cmd, nil
+}
+
+func startBackgroundWait(cmd *exec.Cmd, onExit func()) {
+	if cmd == nil || onExit == nil {
+		return
+	}
+	go func() {
+		_ = cmd.Wait()
+		onExit()
+	}()
 }
