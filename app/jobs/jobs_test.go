@@ -85,7 +85,8 @@ func TestWriteAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			WriteAll(&out, tt.jobs)
+			jobList := tt.jobs
+			WriteAllWithChecker(&out, &jobList, func(int) bool { return false })
 
 			want := ""
 			if len(tt.wantLines) > 0 {

@@ -87,7 +87,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			closeStderr()
 		}
 
-		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters, s.jobs); handled {
+		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters, &s.jobs); handled {
 			closeRedirects()
 			if shouldExit {
 				return nil

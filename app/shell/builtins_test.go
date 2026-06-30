@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -66,7 +67,8 @@ func TestTryBuiltin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			var errOut bytes.Buffer
-			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{}, nil)
+			var jobList []jobs.Job
+			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{}, &jobList)
 			if diff := cmp.Diff(tt.wantHandled, handled); diff != "" {
 				t.Errorf("TryBuiltin(%v) handled mismatch (-want +got):\n%s", tt.fields, diff)
 			}

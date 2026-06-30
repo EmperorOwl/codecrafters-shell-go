@@ -25,10 +25,20 @@ func AddJob(jobs *[]Job, nextID *int, pid int, command string) int {
 	return job.Number
 }
 
-func WriteAll(out io.Writer, jobs []Job) {
-	for i, job := range jobs {
-		fmt.Fprintln(out, formatLine(job, i, len(jobs)))
+func WriteAll(out io.Writer, jobList *[]Job) {
+	WriteAllWithChecker(out, jobList, processExited)
+}
+
+func WriteAllWithChecker(out io.Writer, jobList *[]Job, hasExited func(int) bool) {
+	if jobList == nil {
+		return
 	}
+
+	display, remaining := reapJobs(*jobList, hasExited)
+	for i, job := range display {
+		fmt.Fprintln(out, formatLine(job, i, len(display)))
+	}
+	*jobList = remaining
 }
 
 func markerForIndex(index, count int) string {
