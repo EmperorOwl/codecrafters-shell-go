@@ -1,8 +1,9 @@
 package parser
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseRedirect(t *testing.T) {
@@ -100,11 +101,11 @@ func TestParseRedirect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotFields, gotRedirect := ParseRedirect(tt.tokens)
-			if !reflect.DeepEqual(gotFields, tt.wantFields) {
-				t.Errorf("ParseRedirect() fields = %v, want %v", gotFields, tt.wantFields)
+			if diff := cmp.Diff(tt.wantFields, gotFields); diff != "" {
+				t.Errorf("ParseRedirect() fields mismatch (-want +got):\n%s", diff)
 			}
-			if !reflect.DeepEqual(gotRedirect, tt.wantRedirect) {
-				t.Errorf("ParseRedirect() redirect = %+v, want %+v", gotRedirect, tt.wantRedirect)
+			if diff := cmp.Diff(tt.wantRedirect, gotRedirect); diff != "" {
+				t.Errorf("ParseRedirect() redirect mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

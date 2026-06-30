@@ -3,6 +3,8 @@ package shell
 import (
 	"bytes"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestTryBuiltin(t *testing.T) {
@@ -60,11 +62,11 @@ func TestTryBuiltin(t *testing.T) {
 			var out bytes.Buffer
 			var errOut bytes.Buffer
 			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{})
-			if handled != tt.wantHandled {
-				t.Errorf("TryBuiltin(%v) handled = %v, want %v", tt.fields, handled, tt.wantHandled)
+			if diff := cmp.Diff(tt.wantHandled, handled); diff != "" {
+				t.Errorf("TryBuiltin(%v) handled mismatch (-want +got):\n%s", tt.fields, diff)
 			}
-			if shouldExit != tt.wantExit {
-				t.Errorf("TryBuiltin(%v) shouldExit = %v, want %v", tt.fields, shouldExit, tt.wantExit)
+			if diff := cmp.Diff(tt.wantExit, shouldExit); diff != "" {
+				t.Errorf("TryBuiltin(%v) shouldExit mismatch (-want +got):\n%s", tt.fields, diff)
 			}
 		})
 	}

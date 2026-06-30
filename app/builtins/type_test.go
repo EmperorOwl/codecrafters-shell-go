@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestType(t *testing.T) {
@@ -28,8 +30,8 @@ func TestType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			Type(&out, tt.command, tt.isBuiltin)
-			if got := out.String(); got != tt.want {
-				t.Errorf("Type() output = %q, want %q", got, tt.want)
+			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
+				t.Errorf("Type() output mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -54,8 +56,8 @@ func TestType(t *testing.T) {
 		var out bytes.Buffer
 		Type(&out, command, false)
 		want := command + " is " + executable + "\n"
-		if got := out.String(); got != want {
-			t.Errorf("Type() output = %q, want %q", got, want)
+		if diff := cmp.Diff(want, out.String()); diff != "" {
+			t.Errorf("Type() output mismatch (-want +got):\n%s", diff)
 		}
 	})
 }

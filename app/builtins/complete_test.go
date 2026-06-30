@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"maps"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestComplete(t *testing.T) {
@@ -69,24 +71,15 @@ func TestComplete(t *testing.T) {
 
 			var stdout, stderr bytes.Buffer
 			Complete(&stdout, &stderr, tt.args, registeredCompleters)
-			if got := stdout.String(); got != tt.wantOut {
-				t.Errorf("Complete(%v) stdout = %q, want %q", tt.args, got, tt.wantOut)
+			if diff := cmp.Diff(tt.wantOut, stdout.String()); diff != "" {
+				t.Errorf("Complete(%v) stdout mismatch (-want +got):\n%s", tt.args, diff)
 			}
-			if got := stderr.String(); got != tt.wantErr {
-				t.Errorf("Complete(%v) stderr = %q, want %q", tt.args, got, tt.wantErr)
+			if diff := cmp.Diff(tt.wantErr, stderr.String()); diff != "" {
+				t.Errorf("Complete(%v) stderr mismatch (-want +got):\n%s", tt.args, diff)
 			}
 			if tt.wantRegisteredCompleters != nil {
-				if len(registeredCompleters) != len(tt.wantRegisteredCompleters) {
-					t.Fatalf("registeredCompleters has %d entries, want %d", len(registeredCompleters), len(tt.wantRegisteredCompleters))
-				}
-				for command, want := range tt.wantRegisteredCompleters {
-					got, ok := registeredCompleters[command]
-					if !ok {
-						t.Fatalf("registeredCompleters missing %q", command)
-					}
-					if got != want {
-						t.Errorf("registeredCompleters[%q] = %q, want %q", command, got, want)
-					}
+				if diff := cmp.Diff(tt.wantRegisteredCompleters, registeredCompleters); diff != "" {
+					t.Errorf("registeredCompleters mismatch (-want +got):\n%s", diff)
 				}
 			}
 		})

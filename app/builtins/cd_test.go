@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestCd(t *testing.T) {
@@ -108,16 +110,16 @@ func TestCd(t *testing.T) {
 			var errOut bytes.Buffer
 			Cd(&errOut, tt.directory)
 
-			if got := errOut.String(); got != tt.wantOutput {
-				t.Errorf("Cd() stderr = %q, want %q", got, tt.wantOutput)
+			if diff := cmp.Diff(tt.wantOutput, errOut.String()); diff != "" {
+				t.Errorf("Cd() stderr mismatch (-want +got):\n%s", diff)
 			}
 
 			cwd, err := os.Getwd()
 			if err != nil {
 				t.Fatalf("Getwd() error = %v", err)
 			}
-			if cwd != tt.wantDir {
-				t.Errorf("Getwd() = %q, want %q", cwd, tt.wantDir)
+			if diff := cmp.Diff(tt.wantDir, cwd); diff != "" {
+				t.Errorf("Getwd() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

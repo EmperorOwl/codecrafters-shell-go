@@ -3,6 +3,8 @@ package builtins
 import (
 	"bytes"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestEcho(t *testing.T) {
@@ -20,8 +22,8 @@ func TestEcho(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			Echo(&out, tt.args)
-			if got := out.String(); got != tt.want {
-				t.Errorf("Echo() output = %q, want %q", got, tt.want)
+			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
+				t.Errorf("Echo() output mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

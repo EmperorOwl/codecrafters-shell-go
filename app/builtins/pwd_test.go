@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"os"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestPwd(t *testing.T) {
@@ -15,7 +17,7 @@ func TestPwd(t *testing.T) {
 	var out bytes.Buffer
 	Pwd(&out)
 	want := cwd + "\n"
-	if got := out.String(); got != want {
-		t.Errorf("Pwd() output = %q, want %q", got, want)
+	if diff := cmp.Diff(want, out.String()); diff != "" {
+		t.Errorf("Pwd() output mismatch (-want +got):\n%s", diff)
 	}
 }

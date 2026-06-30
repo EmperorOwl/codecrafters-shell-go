@@ -2,8 +2,10 @@ package shell
 
 import (
 	"io"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestNewExternalCommand(t *testing.T) {
@@ -40,11 +42,11 @@ func TestNewExternalCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := newExternalCommand(tt.fields, tt.executablePath, io.Discard, io.Discard)
-			if cmd.Path != tt.wantProgramPath {
-				t.Errorf("Path = %q, want %q", cmd.Path, tt.wantProgramPath)
+			if diff := cmp.Diff(tt.wantProgramPath, cmd.Path); diff != "" {
+				t.Errorf("Path mismatch (-want +got):\n%s", diff)
 			}
-			if !reflect.DeepEqual(cmd.Args, tt.wantArgs) {
-				t.Errorf("Args = %v, want %v", cmd.Args, tt.wantArgs)
+			if diff := cmp.Diff(tt.wantArgs, cmd.Args, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("Args mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

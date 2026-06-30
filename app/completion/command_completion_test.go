@@ -1,6 +1,11 @@
 package completion
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+)
 
 func TestApplyCommandTab(t *testing.T) {
 	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
@@ -75,16 +80,11 @@ func TestApplyCommandTab(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotBuffer, gotListings := applyCommandTab(builtins, tt.executables, tt.buffer)
-			if gotBuffer != tt.wantBuffer {
-				t.Errorf("applyCommandTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
+			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
+				t.Errorf("applyCommandTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
-			if len(gotListings) != len(tt.wantListings) {
-				t.Fatalf("applyCommandTab(%q) listings = %v, want %v", tt.buffer, gotListings, tt.wantListings)
-			}
-			for i := range tt.wantListings {
-				if gotListings[i] != tt.wantListings[i] {
-					t.Errorf("applyCommandTab(%q) listings[%d] = %q, want %q", tt.buffer, i, gotListings[i], tt.wantListings[i])
-				}
+			if diff := cmp.Diff(tt.wantListings, gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("applyCommandTab(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}

@@ -2,6 +2,9 @@ package completion
 
 import (
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestApplyTab(t *testing.T) {
@@ -49,11 +52,11 @@ func TestApplyTab(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotBuffer, gotListings := ApplyTab(builtinsList, nil, listFiles, tt.completerFuncs, tt.buffer)
-			if gotBuffer != tt.wantBuffer {
-				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
+			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
+				t.Errorf("ApplyTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
-			if len(gotListings) != 0 {
-				t.Errorf("ApplyTab(%q) listings = %v, want nil", tt.buffer, gotListings)
+			if diff := cmp.Diff([]string(nil), gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("ApplyTab(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}

@@ -2,6 +2,9 @@ package completion
 
 import (
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestBuildCompleterFuncOptions(t *testing.T) {
@@ -46,20 +49,8 @@ func TestBuildCompleterFuncOptions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildCompleterFuncOptions(tt.buffer)
-			if got.Command != tt.want.Command {
-				t.Errorf("Command = %q, want %q", got.Command, tt.want.Command)
-			}
-			if got.CurrentWord != tt.want.CurrentWord {
-				t.Errorf("CurrentWord = %q, want %q", got.CurrentWord, tt.want.CurrentWord)
-			}
-			if got.PreviousWord != tt.want.PreviousWord {
-				t.Errorf("PreviousWord = %q, want %q", got.PreviousWord, tt.want.PreviousWord)
-			}
-			if got.CompLine != tt.want.CompLine {
-				t.Errorf("CompLine = %q, want %q", got.CompLine, tt.want.CompLine)
-			}
-			if got.CompPoint != tt.want.CompPoint {
-				t.Errorf("CompPoint = %d, want %d", got.CompPoint, tt.want.CompPoint)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("buildCompleterFuncOptions(%q) mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}
@@ -108,16 +99,11 @@ func TestApplyTabProgrammableTab(t *testing.T) {
 				},
 			}
 			gotBuffer, gotListings := ApplyTab(nil, nil, nil, completerFuncs, tt.buffer)
-			if gotBuffer != tt.wantBuffer {
-				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
+			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
+				t.Errorf("ApplyTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
-			if len(gotListings) != len(tt.wantListings) {
-				t.Fatalf("ApplyTab(%q) listings = %v, want %v", tt.buffer, gotListings, tt.wantListings)
-			}
-			for i, listing := range gotListings {
-				if listing != tt.wantListings[i] {
-					t.Errorf("listings[%d] = %q, want %q", i, listing, tt.wantListings[i])
-				}
+			if diff := cmp.Diff(tt.wantListings, gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("ApplyTab(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}

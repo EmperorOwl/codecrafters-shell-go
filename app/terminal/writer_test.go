@@ -3,6 +3,8 @@ package terminal
 import (
 	"bytes"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestWrapWriter(t *testing.T) {
@@ -35,8 +37,8 @@ func TestWrapWriter(t *testing.T) {
 			if _, err := writer.Write([]byte(tt.input)); err != nil {
 				t.Fatalf("Write() error = %v", err)
 			}
-			if got := buf.String(); got != tt.want {
-				t.Errorf("Write(%q) = %q, want %q", tt.input, got, tt.want)
+			if diff := cmp.Diff(tt.want, buf.String()); diff != "" {
+				t.Errorf("Write(%q) mismatch (-want +got):\n%s", tt.input, diff)
 			}
 		})
 	}

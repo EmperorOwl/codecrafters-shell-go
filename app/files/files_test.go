@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestListInDir(t *testing.T) {
@@ -39,13 +42,8 @@ func TestListInDir(t *testing.T) {
 			}
 
 			got := ListInDir(root, tt.dir)
-			if len(got) != len(tt.want) {
-				t.Fatalf("ListInDir(%q, %q) = %v, want %v", root, tt.dir, got, tt.want)
-			}
-			for i := range tt.want {
-				if got[i] != tt.want[i] {
-					t.Errorf("ListInDir(%q, %q)[%d] = %q, want %q", root, tt.dir, i, got[i], tt.want[i])
-				}
+			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("ListInDir(%q, %q) mismatch (-want +got):\n%s", root, tt.dir, diff)
 			}
 		})
 	}

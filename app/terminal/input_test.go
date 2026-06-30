@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestReadLineRaw(t *testing.T) {
@@ -107,14 +109,14 @@ func TestReadLineRaw(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ReadLine() error = %v", err)
 			}
-			if gotLine != tt.wantLine {
-				t.Errorf("ReadLine() line = %q, want %q", gotLine, tt.wantLine)
+			if diff := cmp.Diff(tt.wantLine, gotLine); diff != "" {
+				t.Errorf("ReadLine() line mismatch (-want +got):\n%s", diff)
 			}
-			if gotEOF != tt.wantEOF {
-				t.Errorf("ReadLine() eof = %v, want %v", gotEOF, tt.wantEOF)
+			if diff := cmp.Diff(tt.wantEOF, gotEOF); diff != "" {
+				t.Errorf("ReadLine() eof mismatch (-want +got):\n%s", diff)
 			}
-			if got := out.String(); got != tt.wantOut {
-				t.Errorf("ReadLine() output = %q, want %q", got, tt.wantOut)
+			if diff := cmp.Diff(tt.wantOut, out.String()); diff != "" {
+				t.Errorf("ReadLine() output mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -130,8 +132,8 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
-	if line != "hi" {
-		t.Errorf("first ReadLine() line = %q, want %q", line, "hi")
+	if diff := cmp.Diff("hi", line); diff != "" {
+		t.Errorf("first ReadLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
 		t.Error("first ReadLine() eof = true, want false")
@@ -144,8 +146,8 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}
-	if line != "" {
-		t.Errorf("second ReadLine() line = %q, want empty (stray LF skipped)", line)
+	if diff := cmp.Diff("", line); diff != "" {
+		t.Errorf("second ReadLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if !eof {
 		t.Error("second ReadLine() eof = false, want true")
@@ -155,8 +157,8 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 	}
 
 	wantOut := "\r$ hi\r\n\r$ "
-	if got := out.String(); got != wantOut {
-		t.Errorf("combined output = %q, want %q", got, wantOut)
+	if diff := cmp.Diff(wantOut, out.String()); diff != "" {
+		t.Errorf("combined output mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -176,8 +178,8 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
-	if line != "ls app/" {
-		t.Errorf("first ReadLine() line = %q, want %q", line, "ls app/")
+	if diff := cmp.Diff("ls app/", line); diff != "" {
+		t.Errorf("first ReadLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
 		t.Error("first ReadLine() eof = true, want false")
@@ -190,8 +192,8 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}
-	if line != "ls app/" {
-		t.Errorf("second ReadLine() line = %q, want %q", line, "ls app/")
+	if diff := cmp.Diff("ls app/", line); diff != "" {
+		t.Errorf("second ReadLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
 		t.Error("second ReadLine() eof = true, want false")

@@ -1,8 +1,10 @@
 package parser
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestTokenize(t *testing.T) {
@@ -178,8 +180,8 @@ func TestTokenize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := Tokenize(tt.input)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Tokenize(%q) = %v, want %v", tt.input, got, tt.want)
+			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("Tokenize(%q) mismatch (-want +got):\n%s", tt.input, diff)
 			}
 		})
 	}

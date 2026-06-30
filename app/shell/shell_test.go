@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestShellRun(t *testing.T) {
@@ -107,16 +108,16 @@ func TestShellRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Run() error = %v", err)
 			}
-			if got := out.String(); got != tt.want {
-				t.Errorf("Run() output = %q, want %q", got, tt.want)
+			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
+				t.Errorf("Run() output mismatch (-want +got):\n%s", diff)
 			}
 			if tt.wantFilePath != "" {
 				content, err := os.ReadFile(tt.wantFilePath)
 				if err != nil {
 					t.Fatalf("ReadFile(%q) error = %v", tt.wantFilePath, err)
 				}
-				if string(content) != tt.wantFileContents {
-					t.Errorf("file %q content = %q, want %q", tt.wantFilePath, content, tt.wantFileContents)
+				if diff := cmp.Diff(tt.wantFileContents, string(content)); diff != "" {
+					t.Errorf("file %q content mismatch (-want +got):\n%s", tt.wantFilePath, diff)
 				}
 			}
 		})

@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestFindExecutableInPath(t *testing.T) {
@@ -65,11 +68,13 @@ func TestFindExecutableInPath(t *testing.T) {
 			t.Setenv("PATH", pathEnv)
 
 			gotPath, gotFound := FindExecutableInPath(tt.command)
-			if gotFound != tt.wantFound {
-				t.Fatalf("FindExecutableInPath(%q) found = %v, want %v", tt.command, gotFound, tt.wantFound)
+			if diff := cmp.Diff(tt.wantFound, gotFound); diff != "" {
+				t.Fatalf("FindExecutableInPath(%q) found mismatch (-want +got):\n%s", tt.command, diff)
 			}
-			if tt.wantFound && gotPath != filePath {
-				t.Errorf("FindExecutableInPath(%q) path = %q, want %q", tt.command, gotPath, filePath)
+			if tt.wantFound {
+				if diff := cmp.Diff(filePath, gotPath); diff != "" {
+					t.Errorf("FindExecutableInPath(%q) path mismatch (-want +got):\n%s", tt.command, diff)
+				}
 			}
 		})
 	}
@@ -110,13 +115,8 @@ func TestFindAllExecutablesInPath(t *testing.T) {
 			t.Setenv("PATH", tt.pathEnv)
 
 			got := FindAllExecutablesInPath()
-			if len(got) != len(tt.want) {
-				t.Fatalf("FindAllExecutablesInPath() = %v, want %v", got, tt.want)
-			}
-			for i := range tt.want {
-				if got[i] != tt.want[i] {
-					t.Errorf("FindAllExecutablesInPath()[%d] = %q, want %q", i, got[i], tt.want[i])
-				}
+			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("FindAllExecutablesInPath() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

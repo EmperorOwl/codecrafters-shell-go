@@ -1,6 +1,11 @@
 package completion
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+)
 
 func TestApplyFileTab(t *testing.T) {
 	cwdFiles := []string{"hello_world.py", "notes.md", "readme.txt"}
@@ -116,16 +121,11 @@ func TestApplyFileTab(t *testing.T) {
 			}
 
 			gotBuffer, gotListings := applyFileTab(listFiles, tt.buffer)
-			if gotBuffer != tt.wantBuffer {
-				t.Errorf("applyFileTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
+			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
+				t.Errorf("applyFileTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
-			if len(gotListings) != len(tt.wantListings) {
-				t.Fatalf("applyFileTab(%q) listings = %v, want %v", tt.buffer, gotListings, tt.wantListings)
-			}
-			for i := range tt.wantListings {
-				if gotListings[i] != tt.wantListings[i] {
-					t.Errorf("applyFileTab(%q) listings[%d] = %q, want %q", tt.buffer, i, gotListings[i], tt.wantListings[i])
-				}
+			if diff := cmp.Diff(tt.wantListings, gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("applyFileTab(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}
