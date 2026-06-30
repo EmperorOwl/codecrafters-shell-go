@@ -37,6 +37,53 @@ func TestJobTableAdd(t *testing.T) {
 	table.mu.Unlock()
 }
 
+func TestJobTableAddRecyclesNumbers(t *testing.T) {
+	tests := []struct {
+		name       string
+		setup      func(*JobTable)
+		wantNumber int
+	}{
+		{
+			name:       "starts at 1",
+			setup:      func(*JobTable) {},
+			wantNumber: 1,
+		},
+		{
+			name: "reuses 1 after table is empty",
+			setup: func(t *JobTable) {
+				t.Add(1, "sleep 1 &")
+				t.Add(2, "sleep 2 &")
+				t.MarkDone(1)
+				t.MarkDone(2)
+				t.ReapDone()
+			},
+			wantNumber: 1,
+		},
+		{
+			name: "reuses 2 when job 1 is still running",
+			setup: func(t *JobTable) {
+				t.Add(1, "sleep 100 &")
+				t.Add(2, "sleep 1 &")
+				t.MarkDone(2)
+				t.ReapDone()
+			},
+			wantNumber: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var table JobTable
+			tt.setup(&table)
+
+			got := table.Add(99, "sleep 10 &")
+			if got != tt.wantNumber {
+				t.Errorf("Add() number = %d, want %d", got, tt.wantNumber)
+			}
+		})
+	}
+}
+
 func TestJobTableMarkDone(t *testing.T) {
 	var table JobTable
 	table.Add(42, "sleep 1 &")

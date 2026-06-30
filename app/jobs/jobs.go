@@ -20,18 +20,30 @@ type Job struct {
 }
 
 type JobTable struct {
-	mu     sync.Mutex
-	nextID int
-	jobs   []Job
+	mu   sync.Mutex
+	jobs []Job
+}
+
+func (t *JobTable) nextJobNumberLocked() int {
+	if len(t.jobs) == 0 {
+		return 1
+	}
+	maxNumber := 0
+	for _, job := range t.jobs {
+		if job.Number > maxNumber {
+			maxNumber = job.Number
+		}
+	}
+	return maxNumber + 1
 }
 
 func (t *JobTable) Add(pid int, command string) int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.nextID++
+	jobNumber := t.nextJobNumberLocked()
 	job := Job{
-		Number:  t.nextID,
+		Number:  jobNumber,
 		PID:     pid,
 		Command: command,
 		Status:  StatusRunning,
