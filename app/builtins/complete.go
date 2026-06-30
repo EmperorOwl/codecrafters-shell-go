@@ -40,6 +40,7 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 	}
 
 	switch args[0] {
+	// Print the registered completion spec for a command, or an error if none exists.
 	case "-p":
 		if len(args) < 2 {
 			return
@@ -50,6 +51,7 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 			return
 		}
 		fmt.Fprintln(stderr, NoCompletionSpecMessage(command))
+	// Register a completer script for a command.
 	case "-C":
 		if len(args) < 3 {
 			return
@@ -58,6 +60,7 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 			Path: args[1],
 			Func: runCompleter,
 		}
+	// Remove the completion rule for a command.
 	case "-r":
 		if len(args) < 2 {
 			return
