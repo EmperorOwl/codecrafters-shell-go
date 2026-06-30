@@ -5,11 +5,38 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
-func RunCompleterScript(opts builtins.CompleterFuncOptions) ([]string, error) {
+// CompleterFuncOptions holds the context passed to a completer script.
+type CompleterFuncOptions struct {
+	ScriptPath   string
+	Command      string
+	CurrentWord  string
+	PreviousWord string
+	CompLine     string
+	CompPoint    int
+}
+
+// CompleterFunc runs a completer and returns completion candidates.
+type CompleterFunc func(opts CompleterFuncOptions) ([]string, error)
+
+// BuildCompleterFuncs maps registered script paths to completer functions.
+func BuildCompleterFuncs(registeredCompleters map[string]string) map[string]CompleterFunc {
+	funcs := make(map[string]CompleterFunc, len(registeredCompleters))
+	for command, scriptPath := range registeredCompleters {
+		funcs[command] = completerFuncFor(scriptPath)
+	}
+	return funcs
+}
+
+func completerFuncFor(scriptPath string) CompleterFunc {
+	return func(opts CompleterFuncOptions) ([]string, error) {
+		opts.ScriptPath = scriptPath
+		return RunCompleterScript(opts)
+	}
+}
+
+func RunCompleterScript(opts CompleterFuncOptions) ([]string, error) {
 	cmd := exec.Command(opts.ScriptPath, opts.Command, opts.CurrentWord, opts.PreviousWord)
 	cmd.Env = append(os.Environ(),
 		"COMP_LINE="+opts.CompLine,
@@ -41,10 +68,10 @@ func parseCompleterOutput(output []byte) []string {
 	return candidates
 }
 
-func buildCompleterFuncOptions(buffer string) builtins.CompleterFuncOptions {
+func buildCompleterFuncOptions(buffer string) CompleterFuncOptions {
 	commandEnd := strings.Index(buffer, " ")
 	if commandEnd < 0 {
-		return builtins.CompleterFuncOptions{
+		return CompleterFuncOptions{
 			Command:   buffer,
 			CompLine:  buffer,
 			CompPoint: len(buffer),
@@ -61,7 +88,7 @@ func buildCompleterFuncOptions(buffer string) builtins.CompleterFuncOptions {
 		if currentWord != "" {
 			previousWord = command
 		}
-		return builtins.CompleterFuncOptions{
+		return CompleterFuncOptions{
 			Command:      command,
 			CurrentWord:  currentWord,
 			PreviousWord: previousWord,
@@ -78,7 +105,7 @@ func buildCompleterFuncOptions(buffer string) builtins.CompleterFuncOptions {
 		previousWord = beforeCurrent[prevLastSpace+1:]
 	}
 
-	return builtins.CompleterFuncOptions{
+	return CompleterFuncOptions{
 		Command:      command,
 		CurrentWord:  currentWord,
 		PreviousWord: previousWord,
@@ -87,14 +114,13 @@ func buildCompleterFuncOptions(buffer string) builtins.CompleterFuncOptions {
 	}
 }
 
-func applyProgrammableTab(buffer string, completer builtins.Completer) (newBuffer string, listings []string) {
-	if completer.Func == nil {
+func applyProgrammableTab(buffer string, completer CompleterFunc) (newBuffer string, listings []string) {
+	if completer == nil {
 		return buffer, nil
 	}
 
 	opts := buildCompleterFuncOptions(buffer)
-	opts.ScriptPath = completer.Path
-	candidates, err := completer.Func(opts)
+	candidates, err := completer(opts)
 	if err != nil || len(candidates) == 0 {
 		return buffer, nil
 	}

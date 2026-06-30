@@ -5,25 +5,6 @@ import (
 	"io"
 )
 
-// CompleterFuncOptions holds the context passed to a completer script.
-type CompleterFuncOptions struct {
-	ScriptPath   string
-	Command      string
-	CurrentWord  string
-	PreviousWord string
-	CompLine     string
-	CompPoint    int
-}
-
-// CompleterFunc runs a completer script and returns completion candidates.
-type CompleterFunc func(opts CompleterFuncOptions) ([]string, error)
-
-// Completer holds a registered completer script and its runner.
-type Completer struct {
-	Path string
-	Func CompleterFunc
-}
-
 func NoCompletionSpecMessage(command string) string {
 	return "complete: " + command + ": no completion specification"
 }
@@ -33,8 +14,8 @@ func RegisteredSpecMessage(scriptPath, command string) string {
 }
 
 // Complete handles the complete builtin. registeredCompleters maps command names
-// to their completers and is owned by the shell session.
-func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[string]Completer, runCompleter CompleterFunc) {
+// to completer script paths and is owned by the caller.
+func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[string]string) {
 	if len(args) == 0 {
 		return
 	}
@@ -46,8 +27,8 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 			return
 		}
 		command := args[1]
-		if completer, ok := registeredCompleters[command]; ok {
-			fmt.Fprintln(stdout, RegisteredSpecMessage(completer.Path, command))
+		if scriptPath, ok := registeredCompleters[command]; ok {
+			fmt.Fprintln(stdout, RegisteredSpecMessage(scriptPath, command))
 			return
 		}
 		fmt.Fprintln(stderr, NoCompletionSpecMessage(command))
@@ -56,10 +37,7 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 		if len(args) < 3 {
 			return
 		}
-		registeredCompleters[args[2]] = Completer{
-			Path: args[1],
-			Func: runCompleter,
-		}
+		registeredCompleters[args[2]] = args[1]
 	// Remove the completion rule for a command.
 	case "-r":
 		if len(args) < 2 {

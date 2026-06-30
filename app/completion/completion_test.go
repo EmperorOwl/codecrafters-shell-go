@@ -2,8 +2,6 @@ package completion
 
 import (
 	"testing"
-
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
 func TestApplyTab(t *testing.T) {
@@ -16,10 +14,10 @@ func TestApplyTab(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                 string
-		registeredCompleters map[string]builtins.Completer
-		buffer               string
-		wantBuffer           string
+		name           string
+		completerFuncs map[string]CompleterFunc
+		buffer         string
+		wantBuffer     string
 	}{
 		{
 			name:       "command completion",
@@ -38,12 +36,9 @@ func TestApplyTab(t *testing.T) {
 		},
 		{
 			name: "programmable completion",
-			registeredCompleters: map[string]builtins.Completer{
-				"docker": {
-					Path: "/path/to/completer",
-					Func: func(builtins.CompleterFuncOptions) ([]string, error) {
-						return []string{"run"}, nil
-					},
+			completerFuncs: map[string]CompleterFunc{
+				"docker": func(CompleterFuncOptions) ([]string, error) {
+					return []string{"run"}, nil
 				},
 			},
 			buffer:     "docker ",
@@ -53,7 +48,7 @@ func TestApplyTab(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtinsList, nil, listFiles, tt.registeredCompleters, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(builtinsList, nil, listFiles, tt.completerFuncs, tt.buffer)
 			if gotBuffer != tt.wantBuffer {
 				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
 			}

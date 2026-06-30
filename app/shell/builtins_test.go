@@ -3,8 +3,6 @@ package shell
 import (
 	"bytes"
 	"testing"
-
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
 func TestTryBuiltin(t *testing.T) {
@@ -61,7 +59,7 @@ func TestTryBuiltin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			var errOut bytes.Buffer
-			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]builtins.Completer{}, nil)
+			handled, shouldExit := TryBuiltin(tt.fields, &out, &errOut, map[string]string{})
 			if handled != tt.wantHandled {
 				t.Errorf("TryBuiltin(%v) handled = %v, want %v", tt.fields, handled, tt.wantHandled)
 			}

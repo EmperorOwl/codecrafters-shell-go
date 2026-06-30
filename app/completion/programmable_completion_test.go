@@ -2,20 +2,18 @@ package completion
 
 import (
 	"testing"
-
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 )
 
 func TestBuildCompleterFuncOptions(t *testing.T) {
 	tests := []struct {
 		name   string
 		buffer string
-		want   builtins.CompleterFuncOptions
+		want   CompleterFuncOptions
 	}{
 		{
 			name:   "first argument completion",
 			buffer: "git ",
-			want: builtins.CompleterFuncOptions{
+			want: CompleterFuncOptions{
 				Command:   "git",
 				CompLine:  "git ",
 				CompPoint: 4,
@@ -24,7 +22,7 @@ func TestBuildCompleterFuncOptions(t *testing.T) {
 		{
 			name:   "partial first argument",
 			buffer: "git remot",
-			want: builtins.CompleterFuncOptions{
+			want: CompleterFuncOptions{
 				Command:      "git",
 				CurrentWord:  "remot",
 				PreviousWord: "git",
@@ -35,7 +33,7 @@ func TestBuildCompleterFuncOptions(t *testing.T) {
 		{
 			name:   "later argument completion",
 			buffer: "git remote set",
-			want: builtins.CompleterFuncOptions{
+			want: CompleterFuncOptions{
 				Command:      "git",
 				CurrentWord:  "set",
 				PreviousWord: "remote",
@@ -104,15 +102,12 @@ func TestApplyTabProgrammableTab(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			candidates := tt.candidates
-			registeredCompleters := map[string]builtins.Completer{
-				"git": {
-					Func: func(builtins.CompleterFuncOptions) ([]string, error) {
-						return candidates, nil
-					},
+			completerFuncs := map[string]CompleterFunc{
+				"git": func(CompleterFuncOptions) ([]string, error) {
+					return tt.candidates, nil
 				},
 			}
-			gotBuffer, gotListings := ApplyTab(nil, nil, nil, registeredCompleters, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(nil, nil, nil, completerFuncs, tt.buffer)
 			if gotBuffer != tt.wantBuffer {
 				t.Errorf("ApplyTab(%q) buffer = %q, want %q", tt.buffer, gotBuffer, tt.wantBuffer)
 			}

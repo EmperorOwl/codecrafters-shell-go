@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/files"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
@@ -31,7 +30,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 	defer session.Close()
 
 	reader := bufio.NewReader(shellStdin)
-	registeredCompleters := map[string]builtins.Completer{}
+	registeredCompleters := map[string]string{}
 	for {
 		rawMode := session.PrepareRead()
 
@@ -42,7 +41,8 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		listFiles := func(dir string) []string {
 			return files.ListInDir(cwd, dir)
 		}
-		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, registeredCompleters)
+		completerFuncs := completion.BuildCompleterFuncs(registeredCompleters)
+		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, completerFuncs)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			closeStderr()
 		}
 
-		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters, completion.RunCompleterScript); handled {
+		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters); handled {
 			closeRedirects()
 			if shouldExit {
 				return nil
