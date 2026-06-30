@@ -33,6 +33,9 @@ func WriteAllWithChecker(out io.Writer, jobList *[]Job, hasExited func(int) bool
 	if jobList == nil {
 		return
 	}
+	if hasExited == nil {
+		hasExited = processExited
+	}
 
 	display, remaining := reapJobs(*jobList, hasExited)
 	for i, job := range display {
