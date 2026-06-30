@@ -28,6 +28,13 @@ func CommandNotFoundMessage(command string) string {
 	return command + ": command not found"
 }
 
+func (s *Shell) printReapedJobs(out io.Writer) {
+	done := s.jobs.ReapDone()
+	if len(done) > 0 {
+		jobs.WriteAll(out, done)
+	}
+}
+
 func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
 	session := terminal.NewSession(shellStdin)
 	defer session.Close()
@@ -45,6 +52,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			return files.ListInDir(cwd, dir)
 		}
 		completerFuncs := completion.BuildCompleterFuncs(registeredCompleters)
+		s.printReapedJobs(terminal.WrapWriter(shellStdout, rawMode))
 		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, completerFuncs)
 		if err != nil {
 			return err

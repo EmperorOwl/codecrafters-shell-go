@@ -131,6 +131,80 @@ func TestJobTableListForDisplay(t *testing.T) {
 	}
 }
 
+func TestJobTableReapDone(t *testing.T) {
+	tests := []struct {
+		name          string
+		setup         func(*JobTable)
+		wantDone      []Job
+		wantRemaining []Job
+	}{
+		{
+			name: "returns no done jobs",
+			setup: func(t *JobTable) {
+				t.Add(1, "sleep 10 &")
+			},
+			wantRemaining: []Job{{
+				Number:  1,
+				PID:     1,
+				Command: "sleep 10 &",
+				Status:  StatusRunning,
+			}},
+		},
+		{
+			name: "returns done jobs and removes them",
+			setup: func(t *JobTable) {
+				t.Add(1, "cat /path/to/fifo &")
+				t.MarkDone(1)
+			},
+			wantDone: []Job{{
+				Number:  1,
+				PID:     1,
+				Command: "cat /path/to/fifo",
+				Status:  StatusDone,
+			}},
+		},
+		{
+			name: "only reaps done jobs",
+			setup: func(t *JobTable) {
+				t.Add(1, "sleep 500 &")
+				t.Add(2, "cat /path/to/fifo &")
+				t.MarkDone(2)
+			},
+			wantDone: []Job{{
+				Number:  2,
+				PID:     2,
+				Command: "cat /path/to/fifo",
+				Status:  StatusDone,
+			}},
+			wantRemaining: []Job{{
+				Number:  1,
+				PID:     1,
+				Command: "sleep 500 &",
+				Status:  StatusRunning,
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var table JobTable
+			tt.setup(&table)
+
+			done := table.ReapDone()
+			if diff := cmp.Diff(tt.wantDone, done, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("done mismatch (-want +got):\n%s", diff)
+			}
+
+			table.mu.Lock()
+			remaining := append([]Job(nil), table.jobs...)
+			table.mu.Unlock()
+			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("remaining mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestWriteAll(t *testing.T) {
 	tests := []struct {
 		name      string

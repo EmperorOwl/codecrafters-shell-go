@@ -54,20 +54,33 @@ func (t *JobTable) MarkDone(jobNumber int) {
 	}
 }
 
+func (t *JobTable) removeDoneLocked() []Job {
+	var done []Job
+	remaining := t.jobs[:0]
+	for _, job := range t.jobs {
+		if job.Status == StatusDone {
+			done = append(done, job)
+		} else {
+			remaining = append(remaining, job)
+		}
+	}
+	t.jobs = remaining
+	return done
+}
+
+func (t *JobTable) ReapDone() []Job {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.removeDoneLocked()
+}
+
 func (t *JobTable) ListForDisplay() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	display := make([]Job, len(t.jobs))
 	copy(display, t.jobs)
-
-	remaining := t.jobs[:0]
-	for _, job := range t.jobs {
-		if job.Status == StatusRunning {
-			remaining = append(remaining, job)
-		}
-	}
-	t.jobs = remaining
+	t.removeDoneLocked()
 	return display
 }
 
