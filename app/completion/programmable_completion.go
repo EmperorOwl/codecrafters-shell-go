@@ -17,26 +17,27 @@ type CompleterFuncOptions struct {
 	CompPoint    int
 }
 
-// CompleterFunc runs a completer and returns completion candidates.
-type CompleterFunc func(opts CompleterFuncOptions) ([]string, error)
+// CompleteHandler returns programmable completion candidates for the given context.
+// A nil return means no completer is registered for the command.
+type CompleteHandler func(opts CompleterFuncOptions) []string
 
-// BuildCompleterFuncs maps registered script paths to completer functions.
-func BuildCompleterFuncs(registeredCompleters map[string]string) map[string]CompleterFunc {
-	funcs := make(map[string]CompleterFunc, len(registeredCompleters))
-	for command, scriptPath := range registeredCompleters {
-		funcs[command] = completerFuncFor(scriptPath)
+// CompleteCommand search and runs the registered completer script for the given command,
+// returning the completion candidates
+func CompleteCommand(completers map[string]string, opts CompleterFuncOptions) []string {
+	scriptPath, ok := completers[opts.Command]
+	if !ok {
+		return nil
 	}
-	return funcs
+	opts.ScriptPath = scriptPath
+
+	candidates, err := runCompleterScript(opts)
+	if err != nil {
+		return []string{}
+	}
+	return candidates
 }
 
-func completerFuncFor(scriptPath string) CompleterFunc {
-	return func(opts CompleterFuncOptions) ([]string, error) {
-		opts.ScriptPath = scriptPath
-		return RunCompleterScript(opts)
-	}
-}
-
-func RunCompleterScript(opts CompleterFuncOptions) ([]string, error) {
+func runCompleterScript(opts CompleterFuncOptions) ([]string, error) {
 	cmd := exec.Command(opts.ScriptPath, opts.Command, opts.CurrentWord, opts.PreviousWord)
 	cmd.Env = append(os.Environ(),
 		"COMP_LINE="+opts.CompLine,
@@ -114,34 +115,33 @@ func buildCompleterFuncOptions(buffer string) CompleterFuncOptions {
 	}
 }
 
-func applyProgrammableTab(buffer string, completer CompleterFunc) (newBuffer string, listings []string) {
-	if completer == nil {
-		return buffer, nil
-	}
-
+func applyProgrammableTab(buffer string, completeHandler CompleteHandler) (newBuffer string, listings []string, handled bool) {
 	opts := buildCompleterFuncOptions(buffer)
-	candidates, err := completer(opts)
-	if err != nil || len(candidates) == 0 {
-		return buffer, nil
+	candidates := completeHandler(opts)
+	if candidates == nil {
+		return buffer, nil, false
+	}
+	if len(candidates) == 0 {
+		return buffer, nil, true
 	}
 
 	lastSpace := strings.LastIndex(buffer, " ")
 	if lastSpace < 0 {
-		return buffer, nil
+		return buffer, nil, true
 	}
 
 	prefix := buffer[:lastSpace+1]
 	matches := findMatches(candidates, opts.CurrentWord)
 	switch len(matches) {
 	case 0:
-		return buffer, nil
+		return buffer, nil, true
 	case 1:
-		return prefix + matches[0] + " ", nil
+		return prefix + matches[0] + " ", nil, true
 	default:
 		lcp := longestCommonPrefix(matches)
 		if len(lcp) > len(opts.CurrentWord) {
-			return prefix + lcp, nil
+			return prefix + lcp, nil, true
 		}
-		return buffer, matches
+		return buffer, matches, true
 	}
 }

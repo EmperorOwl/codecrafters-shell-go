@@ -9,13 +9,14 @@ import (
 func ApplyTab(
 	builtinsList, executables []string,
 	listFiles FileLister,
-	completerFuncs map[string]CompleterFunc,
+	completeHandler CompleteHandler,
 	buffer string,
 ) (newBuffer string, listings []string) {
 	if strings.Contains(buffer, " ") {
-		command := buffer[:strings.Index(buffer, " ")]
-		if completer, ok := completerFuncs[command]; ok {
-			return applyProgrammableTab(buffer, completer)
+		if completeHandler != nil {
+			if newBuffer, listings, ok := applyProgrammableTab(buffer, completeHandler); ok {
+				return newBuffer, listings
+			}
 		}
 		return applyFileTab(listFiles, buffer)
 	}

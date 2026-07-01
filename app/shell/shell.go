@@ -17,11 +17,14 @@ import (
 )
 
 type Shell struct {
-	jobs jobs.JobTable
+	jobs       jobs.JobTable
+	completers map[string]string
 }
 
 func New() *Shell {
-	return &Shell{}
+	return &Shell{
+		completers: make(map[string]string),
+	}
 }
 
 func CommandNotFoundMessage(command string) string {
@@ -40,7 +43,6 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 	defer session.Close()
 
 	reader := bufio.NewReader(shellStdin)
-	registeredCompleters := map[string]string{}
 	for {
 		rawMode := session.PrepareRead()
 
@@ -51,9 +53,11 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 		listFiles := func(dir string) []string {
 			return files.ListInDir(cwd, dir)
 		}
-		completerFuncs := completion.BuildCompleterFuncs(registeredCompleters)
+		completeHandler := func(opts completion.CompleterFuncOptions) []string {
+			return completion.CompleteCommand(s.completers, opts)
+		}
 		s.printReapedJobs(terminal.WrapWriter(shellStdout, rawMode))
-		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, completerFuncs)
+		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, completeHandler)
 		if err != nil {
 			return err
 		}
@@ -94,7 +98,7 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			closeStderr()
 		}
 
-		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, registeredCompleters, &s.jobs); handled {
+		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, s.completers, &s.jobs); handled {
 			closeRedirects()
 			if shouldExit {
 				return nil

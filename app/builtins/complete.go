@@ -13,9 +13,9 @@ func RegisteredSpecMessage(scriptPath, command string) string {
 	return "complete -C '" + scriptPath + "' " + command
 }
 
-// Complete handles the complete builtin. registeredCompleters maps command names
+// Complete handles the complete builtin. completers maps command names
 // to completer script paths and is owned by the caller.
-func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[string]string) {
+func Complete(stdout, stderr io.Writer, args []string, completers map[string]string) {
 	if len(args) == 0 {
 		return
 	}
@@ -27,7 +27,7 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 			return
 		}
 		command := args[1]
-		if scriptPath, ok := registeredCompleters[command]; ok {
+		if scriptPath, ok := completers[command]; ok {
 			fmt.Fprintln(stdout, RegisteredSpecMessage(scriptPath, command))
 			return
 		}
@@ -37,12 +37,12 @@ func Complete(stdout, stderr io.Writer, args []string, registeredCompleters map[
 		if len(args) < 3 {
 			return
 		}
-		registeredCompleters[args[2]] = args[1]
+		completers[args[2]] = args[1]
 	// Remove the completion rule for a command.
 	case "-r":
 		if len(args) < 2 {
 			return
 		}
-		delete(registeredCompleters, args[1])
+		delete(completers, args[1])
 	}
 }

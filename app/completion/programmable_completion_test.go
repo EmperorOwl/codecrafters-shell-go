@@ -93,12 +93,10 @@ func TestApplyTabProgrammableTab(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			completerFuncs := map[string]CompleterFunc{
-				"git": func(CompleterFuncOptions) ([]string, error) {
-					return tt.candidates, nil
-				},
+			completeHandler := func(CompleterFuncOptions) []string {
+				return tt.candidates
 			}
-			gotBuffer, gotListings := ApplyTab(nil, nil, nil, completerFuncs, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(nil, nil, nil, completeHandler, tt.buffer)
 			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
 				t.Errorf("ApplyTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}

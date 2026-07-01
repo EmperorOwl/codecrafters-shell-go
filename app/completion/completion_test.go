@@ -19,7 +19,7 @@ func TestApplyTab(t *testing.T) {
 	tests := []struct {
 		name           string
 		executables    []string
-		completerFuncs map[string]CompleterFunc
+		completeHandler CompleteHandler
 		buffer         string
 		wantBuffer     string
 	}{
@@ -46,10 +46,8 @@ func TestApplyTab(t *testing.T) {
 		},
 		{
 			name: "programmable completion",
-			completerFuncs: map[string]CompleterFunc{
-				"docker": func(CompleterFuncOptions) ([]string, error) {
-					return []string{"run"}, nil
-				},
+			completeHandler: func(CompleterFuncOptions) []string {
+				return []string{"run"}
 			},
 			buffer:     "docker ",
 			wantBuffer: "docker run ",
@@ -58,7 +56,7 @@ func TestApplyTab(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtinsList, tt.executables, listFiles, tt.completerFuncs, tt.buffer)
+			gotBuffer, gotListings := ApplyTab(builtinsList, tt.executables, listFiles, tt.completeHandler, tt.buffer)
 			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
 				t.Errorf("ApplyTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}

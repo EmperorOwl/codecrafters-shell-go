@@ -19,10 +19,10 @@ func ReadLine(
 	rawMode bool,
 	builtins, executables []string,
 	listFiles completion.FileLister,
-	completerFuncs map[string]completion.CompleterFunc,
+	completeHandler completion.CompleteHandler,
 ) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w, builtins, executables, listFiles, completerFuncs)
+		return readLineRaw(reader, w, builtins, executables, listFiles, completeHandler)
 	}
 
 	writePrompt(w, false)
@@ -41,7 +41,7 @@ func readLineRaw(
 	w io.Writer,
 	builtins, executables []string,
 	listFiles completion.FileLister,
-	completerFuncs map[string]completion.CompleterFunc,
+	completeHandler completion.CompleteHandler,
 ) (string, bool, error) {
 	writePrompt(w, true)
 
@@ -62,7 +62,7 @@ func readLineRaw(
 
 		switch b {
 		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(builtins, executables, listFiles, completerFuncs, string(buffer))
+			newBuffer, listings := completion.ApplyTab(builtins, executables, listFiles, completeHandler, string(buffer))
 			switch {
 			case len(listings) > 0:
 				if slices.Equal(pendingListings, listings) {

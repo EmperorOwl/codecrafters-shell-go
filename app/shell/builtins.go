@@ -32,7 +32,7 @@ func BuiltinNames() []string {
 	return names
 }
 
-func TryBuiltin(fields []string, stdout, stderr io.Writer, registeredCompleters map[string]string, table *jobs.JobTable) (handled bool, shouldExit bool) {
+func TryBuiltin(fields []string, stdout, stderr io.Writer, completers map[string]string, table *jobs.JobTable) (handled bool, shouldExit bool) {
 	if len(fields) == 0 {
 		return false, false
 	}
@@ -61,7 +61,7 @@ func TryBuiltin(fields []string, stdout, stderr io.Writer, registeredCompleters 
 		builtins.Type(stdout, target, IsShellBuiltin(target))
 		return true, false
 	case "complete":
-		builtins.Complete(stdout, stderr, fields[1:], registeredCompleters)
+		builtins.Complete(stdout, stderr, fields[1:], completers)
 		return true, false
 	case "jobs":
 		builtins.Jobs(stdout, table)
