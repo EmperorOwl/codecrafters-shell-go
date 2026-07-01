@@ -24,6 +24,8 @@ type JobTable struct {
 	jobs []Job
 }
 
+// nextJobNumberLocked returns the next job number to assign. The table must
+// already be locked. Empty table yields 1; otherwise max existing number + 1.
 func (t *JobTable) nextJobNumberLocked() int {
 	if len(t.jobs) == 0 {
 		return 1
@@ -37,6 +39,7 @@ func (t *JobTable) nextJobNumberLocked() int {
 	return maxNumber + 1
 }
 
+// Add registers a new background job and returns its job number.
 func (t *JobTable) Add(pid int, command string) int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -52,6 +55,7 @@ func (t *JobTable) Add(pid int, command string) int {
 	return job.Number
 }
 
+// MarkDone marks the given job as finished and strips the trailing " &".
 func (t *JobTable) MarkDone(jobNumber int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -66,7 +70,11 @@ func (t *JobTable) MarkDone(jobNumber int) {
 	}
 }
 
-func (t *JobTable) removeDoneLocked() []Job {
+// ReapDone removes finished jobs from the table and returns them.
+func (t *JobTable) ReapDone() []Job {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	var done []Job
 	remaining := t.jobs[:0]
 	for _, job := range t.jobs {
@@ -80,39 +88,36 @@ func (t *JobTable) removeDoneLocked() []Job {
 	return done
 }
 
-func (t *JobTable) ReapDone() []Job {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.removeDoneLocked()
-}
-
+// ListForDisplay returns a snapshot of all jobs currently in the table.
 func (t *JobTable) ListForDisplay() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	display := make([]Job, len(t.jobs))
 	copy(display, t.jobs)
-	t.removeDoneLocked()
 	return display
 }
 
+// WriteAll prints each job on its own line using bash-style formatting.
 func WriteAll(out io.Writer, jobList []Job) {
 	for i, job := range jobList {
 		fmt.Fprintln(out, formatLine(job, i, len(jobList)))
 	}
 }
 
+// markerForIndex returns the job marker for the given position in a listing.
 func markerForIndex(index, count int) string {
 	switch {
 	case index == count-1:
-		return "+"
+		return "+" // current (most recently started) job
 	case index == count-2:
-		return "-"
+		return "-" // previous job
 	default:
-		return " "
+		return " " // older job
 	}
 }
 
+// formatLine builds a single jobs-listing line for the given job.
 func formatLine(job Job, index, count int) string {
 	marker := markerForIndex(index, count)
 

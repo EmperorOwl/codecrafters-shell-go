@@ -64,7 +64,7 @@ func TryBuiltin(fields []string, stdout, stderr io.Writer, registeredCompleters 
 		builtins.Complete(stdout, stderr, fields[1:], registeredCompleters)
 		return true, false
 	case "jobs":
-		builtins.Jobs(stdout, table.ListForDisplay())
+		builtins.Jobs(stdout, table)
 		return true, false
 	default:
 		return false, false

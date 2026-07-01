@@ -10,43 +10,39 @@ import (
 )
 
 func TestJobTableAdd(t *testing.T) {
-	var table JobTable
-
-	number := table.Add(42, "sleep 10 &")
-	if number != 1 {
-		t.Fatalf("Add() number = %d, want 1", number)
-	}
-
-	table.mu.Lock()
-	want := []Job{{
-		Number:  1,
-		PID:     42,
-		Command: "sleep 10 &",
-		Status:  StatusRunning,
-	}}
-	if diff := cmp.Diff(want, table.jobs); diff != "" {
-		t.Errorf("jobs mismatch (-want +got):\n%s", diff)
-	}
-	table.mu.Unlock()
-
-	table.Add(99, "sleep 5 &")
-	table.mu.Lock()
-	if table.jobs[1].Number != 2 {
-		t.Errorf("second job number = %d, want 2", table.jobs[1].Number)
-	}
-	table.mu.Unlock()
-}
-
-func TestJobTableAddRecyclesNumbers(t *testing.T) {
 	tests := []struct {
 		name       string
 		setup      func(*JobTable)
+		pid        int
+		command    string
 		wantNumber int
+		wantJobs   []Job
 	}{
 		{
-			name:       "starts at 1",
+			name:       "first job gets number 1",
 			setup:      func(*JobTable) {},
+			pid:        42,
+			command:    "sleep 10 &",
 			wantNumber: 1,
+			wantJobs: []Job{{
+				Number:  1,
+				PID:     42,
+				Command: "sleep 10 &",
+				Status:  StatusRunning,
+			}},
+		},
+		{
+			name: "second job increments number",
+			setup: func(t *JobTable) {
+				t.Add(42, "sleep 10 &")
+			},
+			pid:        99,
+			command:    "sleep 5 &",
+			wantNumber: 2,
+			wantJobs: []Job{
+				{Number: 1, PID: 42, Command: "sleep 10 &", Status: StatusRunning},
+				{Number: 2, PID: 99, Command: "sleep 5 &", Status: StatusRunning},
+			},
 		},
 		{
 			name: "reuses 1 after table is empty",
@@ -57,7 +53,15 @@ func TestJobTableAddRecyclesNumbers(t *testing.T) {
 				t.MarkDone(2)
 				t.ReapDone()
 			},
+			pid:        99,
+			command:    "sleep 10 &",
 			wantNumber: 1,
+			wantJobs: []Job{{
+				Number:  1,
+				PID:     99,
+				Command: "sleep 10 &",
+				Status:  StatusRunning,
+			}},
 		},
 		{
 			name: "reuses 2 when job 1 is still running",
@@ -67,7 +71,13 @@ func TestJobTableAddRecyclesNumbers(t *testing.T) {
 				t.MarkDone(2)
 				t.ReapDone()
 			},
+			pid:        99,
+			command:    "sleep 10 &",
 			wantNumber: 2,
+			wantJobs: []Job{
+				{Number: 1, PID: 1, Command: "sleep 100 &", Status: StatusRunning},
+				{Number: 2, PID: 99, Command: "sleep 10 &", Status: StatusRunning},
+			},
 		},
 	}
 
@@ -76,85 +86,39 @@ func TestJobTableAddRecyclesNumbers(t *testing.T) {
 			var table JobTable
 			tt.setup(&table)
 
-			got := table.Add(99, "sleep 10 &")
+			got := table.Add(tt.pid, tt.command)
 			if got != tt.wantNumber {
 				t.Errorf("Add() number = %d, want %d", got, tt.wantNumber)
 			}
+
+			table.mu.Lock()
+			if diff := cmp.Diff(tt.wantJobs, table.jobs, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("jobs mismatch (-want +got):\n%s", diff)
+			}
+			table.mu.Unlock()
 		})
 	}
 }
 
 func TestJobTableMarkDone(t *testing.T) {
-	var table JobTable
-	table.Add(42, "sleep 1 &")
-
-	table.MarkDone(1)
-
-	table.mu.Lock()
-	want := []Job{{
-		Number:  1,
-		PID:     42,
-		Command: "sleep 1",
-		Status:  StatusDone,
-	}}
-	if diff := cmp.Diff(want, table.jobs); diff != "" {
-		t.Errorf("jobs mismatch (-want +got):\n%s", diff)
-	}
-	table.mu.Unlock()
-}
-
-func TestJobTableListForDisplay(t *testing.T) {
 	tests := []struct {
-		name          string
-		setup         func(*JobTable)
-		wantDisplay   []Job
-		wantRemaining []Job
+		name      string
+		setup     func(*JobTable)
+		jobNumber int
+		wantJobs  []Job
 	}{
 		{
-			name: "running job stays in table",
+			name: "marks job done and strips background suffix",
 			setup: func(t *JobTable) {
-				t.Add(1, "cat fifo &")
+				t.Add(42, "sleep 1 &")
 			},
-			wantDisplay: []Job{{
+			jobNumber: 1,
+			wantJobs: []Job{{
 				Number:  1,
-				PID:     1,
-				Command: "cat fifo &",
-				Status:  StatusRunning,
-			}},
-			wantRemaining: []Job{{
-				Number:  1,
-				PID:     1,
-				Command: "cat fifo &",
-				Status:  StatusRunning,
-			}},
-		},
-		{
-			name: "done job shown once then removed",
-			setup: func(t *JobTable) {
-				t.Add(1, "sleep 1 &")
-				t.MarkDone(1)
-			},
-			wantDisplay: []Job{{
-				Number:  1,
-				PID:     1,
+				PID:     42,
 				Command: "sleep 1",
 				Status:  StatusDone,
 			}},
-		},
-		{
-			name: "only done jobs are removed",
-			setup: func(t *JobTable) {
-				t.Add(1, "sleep 1 &")
-				t.Add(2, "sleep 2 &")
-				t.MarkDone(1)
-			},
-			wantDisplay: []Job{
-				{Number: 1, PID: 1, Command: "sleep 1", Status: StatusDone},
-				{Number: 2, PID: 2, Command: "sleep 2 &", Status: StatusRunning},
-			},
-			wantRemaining: []Job{
-				{Number: 2, PID: 2, Command: "sleep 2 &", Status: StatusRunning},
-			},
 		},
 	}
 
@@ -163,17 +127,13 @@ func TestJobTableListForDisplay(t *testing.T) {
 			var table JobTable
 			tt.setup(&table)
 
-			display := table.ListForDisplay()
-			if diff := cmp.Diff(tt.wantDisplay, display, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("display mismatch (-want +got):\n%s", diff)
-			}
+			table.MarkDone(tt.jobNumber)
 
 			table.mu.Lock()
-			remaining := append([]Job(nil), table.jobs...)
-			table.mu.Unlock()
-			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("remaining mismatch (-want +got):\n%s", diff)
+			if diff := cmp.Diff(tt.wantJobs, table.jobs, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("jobs mismatch (-want +got):\n%s", diff)
 			}
+			table.mu.Unlock()
 		})
 	}
 }

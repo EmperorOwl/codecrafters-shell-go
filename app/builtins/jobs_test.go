@@ -12,57 +12,49 @@ import (
 
 func TestJobs(t *testing.T) {
 	tests := []struct {
-		name      string
-		jobs      []jobs.Job
-		wantLines []string
-		wantJobs  []jobs.Job
+		name          string
+		setup         func(*jobs.JobTable)
+		wantLines     []string
+		wantRemaining []jobs.Job
 	}{
 		{
-			name:     "no jobs",
-			jobs:     nil,
-			wantJobs: nil,
+			name:  "no jobs",
+			setup: func(*jobs.JobTable) {},
 		},
 		{
 			name: "one running job",
-			jobs: []jobs.Job{{
-				Number:  1,
-				Command: "sleep 10 &",
-				Status:  jobs.StatusRunning,
-			}},
+			setup: func(t *jobs.JobTable) {
+				t.Add(1, "sleep 10 &")
+			},
 			wantLines: []string{
 				"[1]+  Running                 sleep 10 &",
 			},
-			wantJobs: []jobs.Job{{
+			wantRemaining: []jobs.Job{{
 				Number:  1,
+				PID:     1,
 				Command: "sleep 10 &",
 				Status:  jobs.StatusRunning,
 			}},
 		},
 		{
-			name: "done job formatting",
-			jobs: []jobs.Job{{
-				Number:  1,
-				PID:     1,
-				Command: "cat /path/to/fifo",
-				Status:  jobs.StatusDone,
-			}},
+			name: "done job is reaped",
+			setup: func(t *jobs.JobTable) {
+				t.Add(1, "cat /path/to/fifo &")
+				t.MarkDone(1)
+			},
 			wantLines: []string{
 				"[1]+  Done                    cat /path/to/fifo",
 			},
-			wantJobs: []jobs.Job{{
-				Number:  1,
-				PID:     1,
-				Command: "cat /path/to/fifo",
-				Status:  jobs.StatusDone,
-			}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var table jobs.JobTable
+			tt.setup(&table)
+
 			var out bytes.Buffer
-			jobList := tt.jobs
-			Jobs(&out, jobList)
+			Jobs(&out, &table)
 
 			want := ""
 			if len(tt.wantLines) > 0 {
@@ -71,8 +63,10 @@ func TestJobs(t *testing.T) {
 			if diff := cmp.Diff(want, out.String()); diff != "" {
 				t.Errorf("Jobs() output mismatch (-want +got):\n%s", diff)
 			}
-			if diff := cmp.Diff(tt.wantJobs, jobList, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("Jobs() job list mismatch (-want +got):\n%s", diff)
+
+			remaining := table.ListForDisplay()
+			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("Jobs() remaining jobs mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
