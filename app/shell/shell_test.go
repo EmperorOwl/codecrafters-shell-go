@@ -2,165 +2,10 @@ package shell
 
 import (
 	"bytes"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
 	"testing"
 
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/google/go-cmp/cmp"
 )
-
-func TestShellRun(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "output.txt")
-	appendFile := filepath.Join(tmpDir, "append.txt")
-	errorsFile := filepath.Join(tmpDir, "errors.txt")
-	appendErrorsFile := filepath.Join(tmpDir, "append-errors.txt")
-	missingDir := "./does_not_exist"
-	cdErr := builtins.CdErrorMessage(missingDir) + "\n"
-
-	tests := []struct {
-		name             string
-		input            string
-		want             string
-		wantFilePath     string
-		wantFileContents string
-	}{
-		{
-			name:  "echo builtin",
-			input: "echo hello\n",
-			want:  "$ hello\n$ ",
-		},
-		{
-			name:  "echo hello with EOF does not print prompt again",
-			input: "echo hello",
-			want:  "$ hello\n",
-		},
-		{
-			name:  "unknown command",
-			input: "xyz\n",
-			want:  "$ xyz: command not found\n$ ",
-		},
-		{
-			name:  "echo with single-quoted spaces",
-			input: "echo 'world     test'\n",
-			want:  "$ world     test\n$ ",
-		},
-		{
-			name:  "echo with double-quoted arguments",
-			input: `echo "bar"  "shell's"  "foo"` + "\n",
-			want:  "$ bar shell's foo\n$ ",
-		},
-		{
-			name:  "echo with escaped spaces",
-			input: "echo multiple\\ \\ \\ \\ spaces\n",
-			want:  "$ multiple    spaces\n$ ",
-		},
-		{
-			name:  "echo with backslashes inside double quotes",
-			input: `echo "inside\"literal_quote."outside\"` + "\n",
-			want:  "$ inside\"literal_quote.outside\"\n$ ",
-		},
-		{
-			name:             "echo redirects stdout to file",
-			input:            fmt.Sprintf("echo hello > %q\n", outputFile),
-			want:             "$ $ ",
-			wantFilePath:     outputFile,
-			wantFileContents: "hello\n",
-		},
-		{
-			name:             "stderr redirect writes errors to file",
-			input:            fmt.Sprintf("cd %s 2> %q\n", missingDir, errorsFile),
-			want:             "$ $ ",
-			wantFilePath:     errorsFile,
-			wantFileContents: cdErr,
-		},
-		{
-			name: "echo appends stdout to file",
-			input: fmt.Sprintf(
-				"echo first >> %q\necho second >> %q\n",
-				appendFile, appendFile,
-			),
-			want:             "$ $ $ ",
-			wantFilePath:     appendFile,
-			wantFileContents: "first\nsecond\n",
-		},
-		{
-			name: "stderr append redirect writes errors to file",
-			input: fmt.Sprintf(
-				"cd %s 2>> %q\ncd %s 2>> %q\n",
-				missingDir, appendErrorsFile, missingDir, appendErrorsFile,
-			),
-			want:             "$ $ $ ",
-			wantFilePath:     appendErrorsFile,
-			wantFileContents: cdErr + cdErr,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shell := New()
-			var out bytes.Buffer
-			err := shell.Run(strings.NewReader(tt.input), &out, io.Discard)
-			if err != nil {
-				t.Fatalf("Run() error = %v", err)
-			}
-			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
-				t.Errorf("Run() output mismatch (-want +got):\n%s", diff)
-			}
-			if tt.wantFilePath != "" {
-				content, err := os.ReadFile(tt.wantFilePath)
-				if err != nil {
-					t.Fatalf("ReadFile(%q) error = %v", tt.wantFilePath, err)
-				}
-				if diff := cmp.Diff(tt.wantFileContents, string(content)); diff != "" {
-					t.Errorf("file %q content mismatch (-want +got):\n%s", tt.wantFilePath, diff)
-				}
-			}
-		})
-	}
-}
-
-func TestShellRunBackground(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("sleep is not available on Windows")
-	}
-
-	shell := New()
-	var out bytes.Buffer
-	err := shell.Run(strings.NewReader("sleep 30 &\n"), &out, io.Discard)
-	if err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-
-	jobLinePattern := regexp.MustCompile(`^\$ \[1\] \d+\n\$ $`)
-	if !jobLinePattern.MatchString(out.String()) {
-		t.Errorf("Run() output = %q, want pattern $ [1] <pid>\\n$ ", out.String())
-	}
-}
-
-func TestShellRunJobs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("sleep is not available on Windows")
-	}
-
-	shell := New()
-	var out bytes.Buffer
-	err := shell.Run(strings.NewReader("sleep 10 &\njobs\n"), &out, io.Discard)
-	if err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-
-	jobsLinePattern := regexp.MustCompile(`^\$ \[1\] \d+\n\$ \[1\]\+  Running                 sleep 10 &\n\$ $`)
-	if !jobsLinePattern.MatchString(out.String()) {
-		t.Errorf("Run() output = %q, want background start line and jobs listing", out.String())
-	}
-}
 
 func TestPrintReapedJobs(t *testing.T) {
 	shell := New()
@@ -168,37 +13,14 @@ func TestPrintReapedJobs(t *testing.T) {
 	shell.jobs.MarkDone(1)
 
 	var out bytes.Buffer
-	shell.printReapedJobs(&out)
+	shell.PrintReapedJobs(&out)
 
 	want := "[1]+  Done                    cat /path/to/fifo\n"
 	if diff := cmp.Diff(want, out.String()); diff != "" {
-		t.Errorf("printReapedJobs() output mismatch (-want +got):\n%s", diff)
+		t.Errorf("PrintReapedJobs() output mismatch (-want +got):\n%s", diff)
 	}
 
 	if done := shell.jobs.ReapDone(); len(done) != 0 {
-		t.Errorf("printReapedJobs() left %d done jobs in table", len(done))
-	}
-}
-
-func TestShellRunMultipleJobs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("sleep is not available on Windows")
-	}
-
-	shell := New()
-	var out bytes.Buffer
-	input := "sleep 10 &\njobs\nsleep 20 &\njobs\nsleep 30 &\njobs\n"
-	err := shell.Run(strings.NewReader(input), &out, io.Discard)
-	if err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-
-	wantPattern := regexp.MustCompile(
-		`^\$ \[1\] \d+\n\$ \[1\]\+  Running                 sleep 10 &\n` +
-			`\$ \[2\] \d+\n\$ \[1\]-  Running                 sleep 10 &\n\$ \[2\]\+  Running                 sleep 20 &\n` +
-			`\$ \[3\] \d+\n\$ \[1\]   Running                 sleep 10 &\n\$ \[2\]-  Running                 sleep 20 &\n\$ \[3\]\+  Running                 sleep 30 &\n\$ $`,
-	)
-	if !wantPattern.MatchString(out.String()) {
-		t.Errorf("Run() output = %q, want sequential jobs listings with correct markers", out.String())
+		t.Errorf("PrintReapedJobs() left %d done jobs in table", len(done))
 	}
 }

@@ -3,29 +3,21 @@ package terminal
 import (
 	"bufio"
 	"io"
-	"slices"
 	"strings"
 
-	"github.com/codecrafters-io/shell-starter-go/app/completion"
+	"github.com/codecrafters-io/shell-starter-go/app/shell"
 )
 
 // skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
 // on the next readLineRaw call instead of submitting an empty line.
 var skipNextLF bool
 
-func ReadLine(
-	reader *bufio.Reader,
-	w io.Writer,
-	rawMode bool,
-	builtins, executables []string,
-	listFiles completion.FileLister,
-	completeHandler completion.CompleteHandler,
-) (line string, eof bool, err error) {
+// ReadLine reads a line after the prompt has already been displayed.
+func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, tabHandler shell.TabHandler) (line string, eof bool, err error) {
 	if rawMode {
-		return readLineRaw(reader, w, builtins, executables, listFiles, completeHandler)
+		return readLineRaw(reader, w, tabHandler)
 	}
 
-	writePrompt(w, false)
 	text, err := reader.ReadString('\n')
 	if err == io.EOF {
 		return strings.TrimSpace(text), true, nil
@@ -36,17 +28,9 @@ func ReadLine(
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(
-	reader *bufio.Reader,
-	w io.Writer,
-	builtins, executables []string,
-	listFiles completion.FileLister,
-	completeHandler completion.CompleteHandler,
-) (string, bool, error) {
-	writePrompt(w, true)
-
+func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler shell.TabHandler) (string, bool, error) {
 	var buffer []byte
-	var pendingListings []string
+	var tabState shell.TabState
 
 	for {
 		b, err := reader.ReadByte()
@@ -61,43 +45,39 @@ func readLineRaw(
 		}
 
 		switch b {
-		case '\t': // Tab — autocomplete the current command prefix
-			newBuffer, listings := completion.ApplyTab(builtins, executables, listFiles, completeHandler, string(buffer))
-			switch {
-			case len(listings) > 0:
-				if slices.Equal(pendingListings, listings) {
-					pendingListings = nil
-					writeListings(w, listings)
-					redrawLine(w, string(buffer))
-				} else {
-					pendingListings = listings
-					ringBell(w)
-				}
-			case newBuffer != string(buffer):
-				pendingListings = nil
-				buffer = []byte(newBuffer)
-				redrawLine(w, newBuffer)
-			default:
-				pendingListings = nil
+		case '\t':
+			if tabHandler == nil {
+				ringBell(w)
+				continue
+			}
+			result := tabHandler.HandleTab(&tabState, string(buffer))
+			if result.RingBell {
 				ringBell(w)
 			}
-		case '\r': // Enter on Windows
+			if len(result.ListingsToShow) > 0 {
+				writeListings(w, result.ListingsToShow)
+				redrawLine(w, result.Buffer)
+			} else if result.Buffer != string(buffer) {
+				buffer = []byte(result.Buffer)
+				redrawLine(w, result.Buffer)
+			}
+		case '\r':
 			skipNextLF = true
 			writeCRLF(w)
 			return string(buffer), false, nil
-		case '\n': // Enter on Unix; skip LF when it follows CR on Windows
+		case '\n':
 			if skipNextLF {
 				skipNextLF = false
 				continue
 			}
 			writeCRLF(w)
 			return string(buffer), false, nil
-		case 127, 8: // Backspace (DEL on Unix, BS elsewhere)
+		case 127, 8:
 			if len(buffer) > 0 {
 				buffer = buffer[:len(buffer)-1]
 				writeBackspace(w)
 			}
-		default: // Echo printable input
+		default:
 			buffer = append(buffer, b)
 			w.Write([]byte{b})
 		}

@@ -6,8 +6,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/completion"
+	"github.com/codecrafters-io/shell-starter-go/app/shell"
 	"github.com/google/go-cmp/cmp"
 )
+
+type testTabHandler struct {
+	builtins    []string
+	executables []string
+	listFiles   completion.FileLister
+}
+
+func (h testTabHandler) HandleTab(state *shell.TabState, buffer string) shell.TabResult {
+	return shell.ApplyTabAction(state, buffer, h.builtins, h.executables, h.listFiles, nil)
+}
 
 func TestReadLineRaw(t *testing.T) {
 	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
@@ -104,8 +116,10 @@ func TestReadLineRaw(t *testing.T) {
 
 			reader := bufio.NewReader(strings.NewReader(tt.input))
 			var out bytes.Buffer
+			tabHandler := testTabHandler{builtins: builtins, executables: tt.executables}
 
-			gotLine, gotEOF, err := ReadLine(reader, &out, true, builtins, tt.executables, nil, nil)
+			writePrompt(&out, true)
+			gotLine, gotEOF, err := ReadLine(reader, &out, true, tabHandler)
 			if err != nil {
 				t.Fatalf("ReadLine() error = %v", err)
 			}
@@ -123,12 +137,12 @@ func TestReadLineRaw(t *testing.T) {
 }
 
 func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
-	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 	skipNextLF = false
 
 	var out bytes.Buffer
 
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, builtins, nil, nil, nil)
+	writePrompt(&out, true)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, nil)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -142,7 +156,8 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, builtins, nil, nil, nil)
+	writePrompt(&out, true)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, nil)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}
@@ -170,11 +185,13 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 		}
 		return nil
 	}
+	tabHandler := testTabHandler{builtins: builtins, listFiles: listFiles}
 
 	var out bytes.Buffer
 
 	skipNextLF = false
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles, nil)
+	writePrompt(&out, true)
+	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
 	if err != nil {
 		t.Fatalf("first ReadLine() error = %v", err)
 	}
@@ -185,10 +202,9 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 		t.Error("first ReadLine() eof = true, want false")
 	}
 
-	// Simulates a second prompt after an external command. The shell re-enables
-	// raw mode via Session.PrepareRead; tab completion must still work here.
 	skipNextLF = false
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, builtins, nil, listFiles, nil)
+	writePrompt(&out, true)
+	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
 	if err != nil {
 		t.Fatalf("second ReadLine() error = %v", err)
 	}

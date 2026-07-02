@@ -1,19 +1,12 @@
 package shell
 
 import (
-	"bufio"
-	"errors"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/files"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
-	"github.com/codecrafters-io/shell-starter-go/app/parser"
-	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
-	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 )
 
 type Shell struct {
@@ -31,189 +24,21 @@ func CommandNotFoundMessage(command string) string {
 	return command + ": command not found"
 }
 
-func (s *Shell) printReapedJobs(out io.Writer) {
+func (s *Shell) PrintReapedJobs(out io.Writer) {
 	done := s.jobs.ReapDone()
 	if len(done) > 0 {
 		jobs.WriteAll(out, done)
 	}
 }
 
-func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) error {
-	session := terminal.NewSession(shellStdin)
-	defer session.Close()
-
-	reader := bufio.NewReader(shellStdin)
-	for {
-		rawMode := session.PrepareRead()
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		listFiles := func(dir string) []string {
-			return files.ListInDir(cwd, dir)
-		}
-		completeHandler := func(opts completion.CompleterFuncOptions) []string {
-			return completion.CompleteCommand(s.completers, opts)
-		}
-		s.printReapedJobs(terminal.WrapWriter(shellStdout, rawMode))
-		line, eof, err := terminal.ReadLine(reader, shellStdout, rawMode, BuiltinNames(), shellpath.FindAllExecutablesInPath(), listFiles, completeHandler)
-		if err != nil {
-			return err
-		}
-		if eof && line == "" {
-			return nil
-		}
-
-		if line == "" {
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		tokens := parser.Tokenize(line)
-		if segments := parser.SplitPipelineTokens(tokens); len(segments) == 2 {
-			fields0, _ := parser.ParseRedirect(segments[0])
-			fields0, _ = parser.StripBackground(fields0)
-			fields1, redirect1 := parser.ParseRedirect(segments[1])
-			fields1, _ = parser.StripBackground(fields1)
-
-			stdout, closeStdout, redirectErr := openRedirect(shellStdout, redirect1.StdoutPath, redirect1.StdoutAppend)
-			if redirectErr != nil {
-				return redirectErr
-			}
-			stdout = terminal.WrapWriter(stdout, rawMode && redirect1.StdoutPath == "")
-			stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect1.StderrPath, redirect1.StderrAppend)
-			if redirectErr != nil {
-				closeStdout()
-				return redirectErr
-			}
-			stderr = terminal.WrapWriter(stderr, rawMode && redirect1.StderrPath == "")
-			closeRedirects := func() {
-				closeStdout()
-				closeStderr()
-			}
-
-			commands := [2][]string{fields0, fields1}
-			executed, notFound, execErr := ExecutePipeline(commands, stdout, stderr)
-			closeRedirects()
-			if !executed {
-				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(notFound))
-			} else {
-				var exitErr *exec.ExitError
-				if execErr != nil && !errors.As(execErr, &exitErr) {
-					return execErr
-				}
-			}
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		fields, redirect := parser.ParseRedirect(tokens)
-		fields, background := parser.StripBackground(fields)
-		if len(fields) == 0 {
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		command := fields[0]
-		stdout, closeStdout, redirectErr := openRedirect(shellStdout, redirect.StdoutPath, redirect.StdoutAppend)
-		if redirectErr != nil {
-			return redirectErr
-		}
-		stdout = terminal.WrapWriter(stdout, rawMode && redirect.StdoutPath == "")
-		stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect.StderrPath, redirect.StderrAppend)
-		if redirectErr != nil {
-			closeStdout()
-			return redirectErr
-		}
-		stderr = terminal.WrapWriter(stderr, rawMode && redirect.StderrPath == "")
-		closeRedirects := func() {
-			closeStdout()
-			closeStderr()
-		}
-
-		if handled, shouldExit := TryBuiltin(fields, stdout, stderr, s.completers, &s.jobs); handled {
-			closeRedirects()
-			if shouldExit {
-				return nil
-			}
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		if background {
-			executed, pid, cmd, execErr := StartExternalProgram(fields, stdout, stderr)
-			closeRedirects()
-			if !executed {
-				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
-			} else {
-				if execErr != nil {
-					return execErr
-				}
-				jobNumber := s.jobs.Add(pid, line)
-				startBackgroundWait(cmd, func() {
-					s.jobs.MarkDone(jobNumber)
-				})
-				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "[%d] %d\n", jobNumber, pid)
-			}
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		if executed, execErr := ExecuteExternalProgram(fields, stdout, stderr); executed {
-			closeRedirects()
-			var exitErr *exec.ExitError
-			if execErr != nil && !errors.As(execErr, &exitErr) {
-				return execErr
-			}
-			if eof {
-				return nil
-			}
-			continue
-		}
-
-		closeRedirects()
-		fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(command))
-
-		if eof {
-			return nil
-		}
+func (s *Shell) listFiles(dir string) []string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil
 	}
+	return files.ListInDir(cwd, dir)
 }
 
-func openRedirect(defaultWriter io.Writer, path string, shouldAppend bool) (io.Writer, func(), error) {
-	if path == "" {
-		return defaultWriter, func() {}, nil
-	}
-
-	flags := os.O_CREATE | os.O_WRONLY
-	if !shouldAppend {
-		flags |= os.O_TRUNC
-	}
-
-	file, err := os.OpenFile(path, flags, 0644)
-	if err != nil {
-		return nil, func() {}, err
-	}
-
-	if shouldAppend {
-		// Seek to end instead of O_APPEND: on Windows, O_APPEND files do not
-		// receive writes when passed to exec.Cmd.Stderr.
-		if _, err := file.Seek(0, io.SeekEnd); err != nil {
-			file.Close()
-			return nil, func() {}, err
-		}
-	}
-
-	return file, func() { file.Close() }, nil
+func (s *Shell) complete(opts completion.CompleterFuncOptions) []string {
+	return completion.CompleteCommand(s.completers, opts)
 }
