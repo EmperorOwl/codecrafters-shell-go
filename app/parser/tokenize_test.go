@@ -175,6 +175,26 @@ func TestTokenize(t *testing.T) {
 			input: `"exe with \\ backslash" /tmp/f4`,
 			want:  []string{`exe with \ backslash`, "/tmp/f4"},
 		},
+		{
+			name:  "pipeline operator splits commands",
+			input: "cat /tmp/foo/file | wc",
+			want:  []string{"cat", "/tmp/foo/file", "|", "wc"},
+		},
+		{
+			name:  "pipeline operator without surrounding spaces",
+			input: "cat file|wc",
+			want:  []string{"cat", "file", "|", "wc"},
+		},
+		{
+			name:  "pipe inside quotes stays literal",
+			input: `echo "a|b"`,
+			want:  []string{"echo", "a|b"},
+		},
+		{
+			name:  "escaped pipe stays literal",
+			input: `echo a\|b`,
+			want:  []string{"echo", "a|b"},
+		},
 	}
 
 	for _, tt := range tests {

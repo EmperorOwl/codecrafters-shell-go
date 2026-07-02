@@ -10,6 +10,7 @@ const (
 	singleQuote = '\''
 	doubleQuote = '"'
 	backslash   = '\\'
+	pipeOp      = '|'
 )
 
 var backslashInDoubleQuotesEscapes = []rune{
@@ -53,6 +54,10 @@ func Tokenize(line string) []string {
 
 		case r == backslash && !inSingleQuotes:
 			escaping = true
+
+		case r == pipeOp && !inDoubleQuotes && !inSingleQuotes:
+			handleTokenDone()
+			tokens = append(tokens, string(pipeOp))
 
 		case unicode.IsSpace(r) && !inDoubleQuotes && !inSingleQuotes:
 			handleTokenDone()

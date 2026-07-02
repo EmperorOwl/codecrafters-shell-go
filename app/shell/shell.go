@@ -72,7 +72,47 @@ func (s *Shell) Run(shellStdin io.Reader, shellStdout, shellStderr io.Writer) er
 			continue
 		}
 
-		fields, redirect := parser.ParseRedirect(parser.Tokenize(line))
+		tokens := parser.Tokenize(line)
+		if segments := parser.SplitPipelineTokens(tokens); len(segments) == 2 {
+			fields0, _ := parser.ParseRedirect(segments[0])
+			fields0, _ = parser.StripBackground(fields0)
+			fields1, redirect1 := parser.ParseRedirect(segments[1])
+			fields1, _ = parser.StripBackground(fields1)
+
+			stdout, closeStdout, redirectErr := openRedirect(shellStdout, redirect1.StdoutPath, redirect1.StdoutAppend)
+			if redirectErr != nil {
+				return redirectErr
+			}
+			stdout = terminal.WrapWriter(stdout, rawMode && redirect1.StdoutPath == "")
+			stderr, closeStderr, redirectErr := openRedirect(shellStderr, redirect1.StderrPath, redirect1.StderrAppend)
+			if redirectErr != nil {
+				closeStdout()
+				return redirectErr
+			}
+			stderr = terminal.WrapWriter(stderr, rawMode && redirect1.StderrPath == "")
+			closeRedirects := func() {
+				closeStdout()
+				closeStderr()
+			}
+
+			commands := [2][]string{fields0, fields1}
+			executed, notFound, execErr := ExecutePipeline(commands, stdout, stderr)
+			closeRedirects()
+			if !executed {
+				fmt.Fprintf(terminal.WrapWriter(shellStdout, rawMode), "%s\n", CommandNotFoundMessage(notFound))
+			} else {
+				var exitErr *exec.ExitError
+				if execErr != nil && !errors.As(execErr, &exitErr) {
+					return execErr
+				}
+			}
+			if eof {
+				return nil
+			}
+			continue
+		}
+
+		fields, redirect := parser.ParseRedirect(tokens)
 		fields, background := parser.StripBackground(fields)
 		if len(fields) == 0 {
 			if eof {

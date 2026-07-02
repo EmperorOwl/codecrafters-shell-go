@@ -47,6 +47,49 @@ func StartExternalProgram(fields []string, stdout, stderr io.Writer) (executed b
 	return true, cmd.Process.Pid, cmd, nil
 }
 
+func findExecutable(fields []string) (path string, ok bool) {
+	if len(fields) == 0 {
+		return "", false
+	}
+	return shellpath.FindExecutableInPath(fields[0])
+}
+
+func ExecutePipeline(fieldsList [2][]string, stdout, stderr io.Writer) (executed bool, notFound string, err error) {
+	for _, fields := range fieldsList {
+		if len(fields) == 0 {
+			return false, "", nil
+		}
+		if _, ok := findExecutable(fields); !ok {
+			return false, fields[0], nil
+		}
+	}
+
+	path0, _ := findExecutable(fieldsList[0])
+	path1, _ := findExecutable(fieldsList[1])
+
+	cmd0 := newExternalCommand(fieldsList[0], path0, nil, stderr)
+	cmd1 := newExternalCommand(fieldsList[1], path1, stdout, stderr)
+
+	pipeReader, err := cmd0.StdoutPipe()
+	if err != nil {
+		return true, "", err
+	}
+	cmd1.Stdin = pipeReader
+
+	if err := cmd0.Start(); err != nil {
+		return true, "", err
+	}
+	if err := cmd1.Start(); err != nil {
+		_ = cmd0.Process.Kill()
+		_ = cmd0.Wait()
+		return true, "", err
+	}
+
+	err1 := cmd1.Wait()
+	_ = cmd0.Wait()
+	return true, "", err1
+}
+
 func startBackgroundWait(cmd *exec.Cmd, onExit func()) {
 	if cmd == nil || onExit == nil {
 		return
