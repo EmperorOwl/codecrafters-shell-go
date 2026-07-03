@@ -44,35 +44,10 @@ func nonExitError(err error) error {
 func (s *Shell) ExecuteLine(line string, eof bool, stdout, stderr io.Writer) (bool, error) {
 	ctx := lineContext{stdout: stdout, stderr: stderr, line: line, eof: eof}
 	tokens := parser.Tokenize(line)
-	if segments := parser.SplitPipelineTokens(tokens); len(segments) == 2 {
+	if segments := parser.SplitPipelineTokens(tokens); len(segments) >= 2 {
 		return s.executePipeline(segments, ctx)
 	}
 	return s.executeCommand(tokens, ctx)
-}
-
-func parsePipelineSegments(segments [][]string) ([2][]string, parser.Redirect) {
-	fields0, _ := parser.ParseRedirect(segments[0])
-	fields0, _ = parser.StripBackground(fields0)
-	fields1, redirect := parser.ParseRedirect(segments[1])
-	fields1, _ = parser.StripBackground(fields1)
-	return [2][]string{fields0, fields1}, redirect
-}
-
-func (s *Shell) executePipeline(segments [][]string, ctx lineContext) (bool, error) {
-	commands, redirect := parsePipelineSegments(segments)
-	outputs, err := openCommandOutputs(ctx.stdout, ctx.stderr, redirect)
-	if err != nil {
-		return true, err
-	}
-	defer outputs.Close()
-
-	executed, notFound, execErr := s.ExecutePipeline(commands, outputs.Stdout, outputs.Stderr)
-	if !executed {
-		ctx.printCommandNotFound(notFound)
-	} else if err := nonExitError(execErr); err != nil {
-		return true, err
-	}
-	return ctx.stopAfter(nil)
 }
 
 func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
