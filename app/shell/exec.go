@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"os/exec"
@@ -54,21 +55,135 @@ func findExecutable(fields []string) (path string, ok bool) {
 	return shellpath.FindExecutableInPath(fields[0])
 }
 
-func ExecutePipeline(fieldsList [2][]string, stdout, stderr io.Writer) (executed bool, notFound string, err error) {
-	for _, fields := range fieldsList {
-		if len(fields) == 0 {
-			return false, "", nil
+func (s *Shell) runBuiltin(fields []string, stdout, stderr io.Writer) (shouldExit bool) {
+	_, shouldExit = TryBuiltin(fields, stdout, stderr, s.completers, &s.jobs)
+	return shouldExit
+}
+
+func (s *Shell) runBuiltinDrainingStdin(fields []string, stdin io.Reader, stdout, stderr io.Writer) (shouldExit bool) {
+	drainDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(io.Discard, stdin)
+		close(drainDone)
+	}()
+
+	shouldExit = s.runBuiltin(fields, stdout, stderr)
+	<-drainDone
+	return shouldExit
+}
+
+func (s *Shell) executeExternalBuiltinPipeline(fields0, fields1 []string, stdout, stderr io.Writer) (bool, string, error) {
+	pr, pw := io.Pipe()
+
+	path, _ := findExecutable(fields0)
+	cmd0 := newExternalCommand(fields0, path, pw, stderr)
+	cmd0.Stdin = bytes.NewReader(nil)
+	if err := cmd0.Start(); err != nil {
+		_ = pw.Close()
+		_ = pr.Close()
+		return true, "", err
+	}
+
+	drainDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(io.Discard, pr)
+		close(drainDone)
+	}()
+
+	if s.runBuiltin(fields1, stdout, stderr) {
+		_ = cmd0.Process.Kill()
+		_ = cmd0.Wait()
+		_ = pw.Close()
+		<-drainDone
+		return true, "", nil
+	}
+
+	_ = cmd0.Wait()
+	_ = pw.Close()
+	<-drainDone
+	return true, "", nil
+}
+
+func (s *Shell) ExecutePipeline(fieldsList [2][]string, stdout, stderr io.Writer) (executed bool, notFound string, err error) {
+	fields0, fields1 := fieldsList[0], fieldsList[1]
+	if len(fields0) == 0 || len(fields1) == 0 {
+		return false, "", nil
+	}
+
+	builtin0 := IsShellBuiltin(fields0[0])
+	builtin1 := IsShellBuiltin(fields1[0])
+
+	if !builtin0 {
+		if _, ok := findExecutable(fields0); !ok {
+			return false, fields0[0], nil
 		}
-		if _, ok := findExecutable(fields); !ok {
-			return false, fields[0], nil
+	}
+	if !builtin1 {
+		if _, ok := findExecutable(fields1); !ok {
+			return false, fields1[0], nil
 		}
 	}
 
-	path0, _ := findExecutable(fieldsList[0])
-	path1, _ := findExecutable(fieldsList[1])
+	switch {
+	case builtin0 && builtin1:
+		return s.executeBuiltinBuiltinPipeline(fields0, fields1, stdout, stderr)
+	case builtin0 && !builtin1:
+		return s.executeBuiltinExternalPipeline(fields0, fields1, stdout, stderr)
+	case !builtin0 && builtin1:
+		return s.executeExternalBuiltinPipeline(fields0, fields1, stdout, stderr)
+	default:
+		return s.executeExternalExternalPipeline(fields0, fields1, stdout, stderr)
+	}
+}
 
-	cmd0 := newExternalCommand(fieldsList[0], path0, nil, stderr)
-	cmd1 := newExternalCommand(fieldsList[1], path1, stdout, stderr)
+func (s *Shell) executeBuiltinBuiltinPipeline(fields0, fields1 []string, stdout, stderr io.Writer) (bool, string, error) {
+	pr, pw := io.Pipe()
+
+	done := make(chan struct{})
+	go func() {
+		s.runBuiltinDrainingStdin(fields1, pr, stdout, stderr)
+		close(done)
+	}()
+
+	if s.runBuiltin(fields0, pw, stderr) {
+		_ = pw.Close()
+		<-done
+		return true, "", nil
+	}
+	_ = pw.Close()
+	<-done
+	return true, "", nil
+}
+
+func (s *Shell) executeBuiltinExternalPipeline(fields0, fields1 []string, stdout, stderr io.Writer) (bool, string, error) {
+	pr, pw := io.Pipe()
+
+	path, _ := findExecutable(fields1)
+	cmd1 := newExternalCommand(fields1, path, stdout, stderr)
+	cmd1.Stdin = pr
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cmd1.Run()
+	}()
+
+	if s.runBuiltin(fields0, pw, stderr) {
+		_ = pw.Close()
+		<-errCh
+		return true, "", nil
+	}
+	_ = pw.Close()
+
+	err := <-errCh
+	return true, "", err
+}
+
+func (s *Shell) executeExternalExternalPipeline(fields0, fields1 []string, stdout, stderr io.Writer) (bool, string, error) {
+	path0, _ := findExecutable(fields0)
+	path1, _ := findExecutable(fields1)
+
+	cmd0 := newExternalCommand(fields0, path0, nil, stderr)
+	cmd1 := newExternalCommand(fields1, path1, stdout, stderr)
 
 	pipeReader, err := cmd0.StdoutPipe()
 	if err != nil {

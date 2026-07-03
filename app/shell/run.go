@@ -66,7 +66,7 @@ func (s *Shell) executePipeline(segments [][]string, ctx lineContext) (bool, err
 	}
 	defer outputs.Close()
 
-	executed, notFound, execErr := ExecutePipeline(commands, outputs.Stdout, outputs.Stderr)
+	executed, notFound, execErr := s.ExecutePipeline(commands, outputs.Stdout, outputs.Stderr)
 	if !executed {
 		ctx.printCommandNotFound(notFound)
 	} else if err := nonExitError(execErr); err != nil {
