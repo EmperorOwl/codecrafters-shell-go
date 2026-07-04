@@ -4,128 +4,46 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/codecrafters-io/shell-starter-go/app/external"
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-type pipelineStage struct {
-	fields    []string
-	isBuiltin bool
-}
-
-type stageResult struct {
-	err        error
-	shouldExit bool
-}
-
-func (s *Shell) runBuiltin(fields []string, stdout, stderr io.Writer) (shouldExit bool) {
-	_, shouldExit = TryBuiltin(fields, stdout, stderr, s.completers, &s.jobs)
-	return shouldExit
-}
-
-func (s *Shell) runBuiltinDrainingStdin(fields []string, stdin io.Reader, stdout, stderr io.Writer) (shouldExit bool) {
-	drainDone := make(chan struct{})
-	go func() {
-		_, _ = io.Copy(io.Discard, stdin)
-		close(drainDone)
-	}()
-
-	shouldExit = s.runBuiltin(fields, stdout, stderr)
-	<-drainDone
-	return shouldExit
-}
-
-func resolvePipelineStages(segments [][]string) ([]pipelineStage, string, bool) {
-	stages := make([]pipelineStage, len(segments))
-	for i, fields := range segments {
-		if len(fields) == 0 {
-			return nil, "", false
-		}
-		if IsShellBuiltin(fields[0]) {
-			stages[i] = pipelineStage{fields: fields, isBuiltin: true}
-			continue
-		}
-		if _, ok := external.FindExecutableInPath(fields[0]); ok {
-			stages[i] = pipelineStage{fields: fields, isBuiltin: false}
-			continue
-		}
-		return nil, fields[0], false
-	}
-	return stages, "", true
-}
-
-func (s *Shell) runPipelineStage(stage pipelineStage, stdin io.Reader, stdout, stderr io.Writer) (error, bool) {
-	if stage.isBuiltin {
-		if stdin != nil {
-			return nil, s.runBuiltinDrainingStdin(stage.fields, stdin, stdout, stderr)
-		}
-		return nil, s.runBuiltin(stage.fields, stdout, stderr)
+func (s *Shell) executePipeline(segments [][]string, ctx lineContext) (bool, error) {
+	if len(segments) < 2 {
+		return false, nil
 	}
 
-	prog, _ := external.New(stage.fields, stdout, stderr)
-	if stdin != nil {
-		prog.Stdin = stdin
-	} else {
-		prog.Stdin = bytes.NewReader(nil)
+	commands, redirect := parsePipelineSegments(segments)
+	outputs, err := openCommandOutputs(ctx.stdout, ctx.stderr, redirect)
+	if err != nil {
+		return true, err
 	}
-	return prog.Run(), false
-}
+	defer outputs.Close()
 
-func (s *Shell) runPipelineStages(stages []pipelineStage, stdout, stderr io.Writer) error {
-	n := len(stages)
+	n := len(commands)
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)
 	for i := 0; i < n-1; i++ {
 		readers[i], writers[i] = io.Pipe()
 	}
 
-	results := make(chan stageResult, n)
-	for i := 0; i < n; i++ {
-		i := i
-		go func() {
-			var in io.Reader
-			if i > 0 {
-				in = readers[i-1]
-			}
-			out := stdout
-			if i < n-1 {
-				out = writers[i]
-			}
-			defer func() {
-				if i < n-1 {
-					_ = writers[i].Close()
-				}
-			}()
-
-			err, shouldExit := s.runPipelineStage(stages[i], in, out, stderr)
-			results <- stageResult{err: err, shouldExit: shouldExit}
-		}()
+	pipeWriters := make([]io.Writer, n-1)
+	for i := range writers {
+		pipeWriters[i] = writers[i]
 	}
 
-	var lastErr error
-	for i := 0; i < n; i++ {
-		result := <-results
-		if i == n-1 {
-			lastErr = result.err
-		}
-	}
-	return lastErr
-}
-
-func (s *Shell) ExecutePipeline(segments [][]string, stdout, stderr io.Writer) (executed bool, notFound string, err error) {
-	if len(segments) < 2 {
-		return false, "", nil
-	}
-
-	stages, notFound, ok := resolvePipelineStages(segments)
+	pipelineCommands, notFound, ok := s.buildPipelineCommands(commands, outputs.Stdout, outputs.Stderr, pipeWriters)
 	if !ok {
 		if notFound != "" {
-			return false, notFound, nil
+			ctx.printCommandNotFound(notFound)
 		}
-		return false, "", nil
+		return false, nil
 	}
 
-	return true, "", s.runPipelineStages(stages, stdout, stderr)
+	if err := nonExitError(s.runPipelineCommands(pipelineCommands, readers, writers)); err != nil {
+		return true, err
+	}
+	return false, nil
 }
 
 func parsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
@@ -142,19 +60,78 @@ func parsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
 	return commands, redirect
 }
 
-func (s *Shell) executePipeline(segments [][]string, ctx lineContext) (bool, error) {
-	commands, redirect := parsePipelineSegments(segments)
-	outputs, err := openCommandOutputs(ctx.stdout, ctx.stderr, redirect)
-	if err != nil {
-		return true, err
-	}
-	defer outputs.Close()
+func (s *Shell) buildPipelineCommands(segments [][]string, stdout, stderr io.Writer, writers []io.Writer) ([]resolvedCommand, string, bool) {
+	commands := make([]resolvedCommand, len(segments))
+	for i, fields := range segments {
+		if len(fields) == 0 {
+			return nil, "", false
+		}
 
-	executed, notFound, execErr := s.ExecutePipeline(commands, outputs.Stdout, outputs.Stderr)
-	if !executed {
-		ctx.printCommandNotFound(notFound)
-	} else if err := nonExitError(execErr); err != nil {
-		return true, err
+		out := stdout
+		if i < len(writers) {
+			out = writers[i]
+		}
+
+		cmd, notFound, ok := s.resolveCommand(fields, out, stderr)
+		if !ok {
+			return nil, notFound, false
+		}
+		commands[i] = cmd
 	}
-	return false, nil
+	return commands, "", true
+}
+
+func (s *Shell) runPipelineCommands(commands []resolvedCommand, readers []io.ReadCloser, writers []io.WriteCloser) error {
+	n := len(commands)
+	results := make(chan error, n)
+	for i := 0; i < n; i++ {
+		i := i
+		go func() {
+			defer func() {
+				if i < n-1 {
+					_ = writers[i].Close()
+				}
+			}()
+
+			var err error
+			switch {
+			case commands[i].builtin != nil:
+				if i > 0 {
+					_, err = runDrainingStdin(commands[i].builtin, readers[i-1])
+				} else {
+					_, err = commands[i].builtin.Run()
+				}
+			case commands[i].external != nil:
+				if i > 0 {
+					commands[i].external.Stdin = readers[i-1]
+				} else {
+					commands[i].external.Stdin = bytes.NewReader(nil)
+				}
+				err = commands[i].external.Run()
+			}
+
+			results <- err
+		}()
+	}
+
+	var lastErr error
+	for i := 0; i < n; i++ {
+		err := <-results
+		if i == n-1 {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+func runDrainingStdin(cmd *builtins.Builtin, stdin io.Reader) (bool, error) {
+	drainDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(io.Discard, stdin)
+		close(drainDone)
+	}()
+
+	exitShell, err := cmd.Run()
+	<-drainDone
+	return exitShell, err
 }

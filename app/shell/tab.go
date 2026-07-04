@@ -3,6 +3,7 @@ package shell
 import (
 	"slices"
 
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 )
@@ -28,7 +29,7 @@ func (s *Shell) HandleTab(state *TabState, buffer string) TabResult {
 	return ApplyTabAction(
 		state,
 		buffer,
-		BuiltinNames(),
+		builtins.Names(),
 		external.FindAllExecutablesInPath(),
 		s.listFiles,
 		s.complete,

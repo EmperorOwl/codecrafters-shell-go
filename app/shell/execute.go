@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
@@ -14,6 +15,11 @@ type lineContext struct {
 	stdout io.Writer
 	stderr io.Writer
 	line   string
+}
+
+type resolvedCommand struct {
+	builtin  *builtins.Builtin
+	external *external.ExternalProgram
 }
 
 func (c lineContext) printCommandNotFound(command string) {
@@ -29,6 +35,22 @@ func nonExitError(err error) error {
 		return nil
 	}
 	return err
+}
+
+func (s *Shell) resolveCommand(fields []string, stdout, stderr io.Writer) (resolvedCommand, string, bool) {
+	if len(fields) == 0 {
+		return resolvedCommand{}, "", false
+	}
+	if builtins.IsBuiltin(fields[0]) {
+		return resolvedCommand{
+			builtin: builtins.New(fields[0], fields[1:], stdout, stderr, s.completers, &s.jobs),
+		}, "", true
+	}
+	prog, ok := external.New(fields, stdout, stderr)
+	if !ok {
+		return resolvedCommand{}, fields[0], false
+	}
+	return resolvedCommand{external: prog}, "", true
 }
 
 func (s *Shell) ExecuteLine(line string, stdout, stderr io.Writer) (bool, error) {
@@ -53,27 +75,35 @@ func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
 	}
 	defer outputs.Close()
 
-	if handled, shouldExit := TryBuiltin(fields, outputs.Stdout, outputs.Stderr, s.completers, &s.jobs); handled {
-		if shouldExit {
-			return true, nil
-		}
+	cmd, notFound, ok := s.resolveCommand(fields, outputs.Stdout, outputs.Stderr)
+	if !ok {
+		ctx.printCommandNotFound(notFound)
 		return false, nil
+	}
+
+	if cmd.builtin != nil {
+		return s.executeBuiltin(cmd.builtin)
 	}
 
 	if background {
-		return s.executeBackground(fields, ctx, outputs)
+		return s.executeBackground(cmd.external, ctx)
 	}
-	return s.executeForeground(fields, ctx, outputs)
+	return s.executeForeground(cmd.external)
 }
 
-func (s *Shell) executeBackground(fields []string, ctx lineContext, outputs commandOutputs) (bool, error) {
-	var jobNumber int
-	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-	if !ok {
-		ctx.printCommandNotFound(fields[0])
-		return false, nil
+func (s *Shell) executeBuiltin(cmd *builtins.Builtin) (bool, error) {
+	exitShell, err := cmd.Run()
+	if exitShell {
+		return true, nil
 	}
+	if err != nil {
+		return true, err
+	}
+	return false, nil
+}
 
+func (s *Shell) executeBackground(prog *external.ExternalProgram, ctx lineContext) (bool, error) {
+	var jobNumber int
 	pid, execErr := prog.RunInBackground(func() {
 		s.jobs.MarkDone(jobNumber)
 	})
@@ -86,13 +116,7 @@ func (s *Shell) executeBackground(fields []string, ctx lineContext, outputs comm
 	return false, nil
 }
 
-func (s *Shell) executeForeground(fields []string, ctx lineContext, outputs commandOutputs) (bool, error) {
-	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-	if !ok {
-		ctx.printCommandNotFound(fields[0])
-		return false, nil
-	}
-
+func (s *Shell) executeForeground(prog *external.ExternalProgram) (bool, error) {
 	if err := nonExitError(prog.Run()); err != nil {
 		return true, err
 	}

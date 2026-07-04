@@ -17,16 +17,12 @@ func TestExecutePipeline_builtinExternal(t *testing.T) {
 
 	s := New()
 	var out bytes.Buffer
-	executed, notFound, err := s.ExecutePipeline(
+	_, err := s.executePipeline(
 		[][]string{{"echo", "apple-orange"}, {"cat"}},
-		&out,
-		io.Discard,
+		lineContext{stdout: &out, stderr: io.Discard},
 	)
 	if err != nil {
-		t.Fatalf("ExecutePipeline() error = %v", err)
-	}
-	if !executed {
-		t.Fatalf("ExecutePipeline() executed = false, notFound = %q", notFound)
+		t.Fatalf("executePipeline() error = %v", err)
 	}
 	if diff := cmp.Diff("apple-orange\n", out.String()); diff != "" {
 		t.Errorf("output mismatch (-want +got):\n%s", diff)
@@ -40,16 +36,12 @@ func TestExecutePipeline_externalBuiltin(t *testing.T) {
 
 	s := New()
 	var out bytes.Buffer
-	executed, notFound, err := s.ExecutePipeline(
+	_, err := s.executePipeline(
 		[][]string{{"echo", "ignored"}, {"type", "exit"}},
-		&out,
-		io.Discard,
+		lineContext{stdout: &out, stderr: io.Discard},
 	)
 	if err != nil {
-		t.Fatalf("ExecutePipeline() error = %v", err)
-	}
-	if !executed {
-		t.Fatalf("ExecutePipeline() executed = false, notFound = %q", notFound)
+		t.Fatalf("executePipeline() error = %v", err)
 	}
 	if !strings.Contains(out.String(), "exit is a shell builtin") {
 		t.Errorf("output = %q, want type builtin message", out.String())
@@ -66,16 +58,12 @@ func TestExecutePipeline_threeStages(t *testing.T) {
 
 	s := New()
 	var out bytes.Buffer
-	executed, notFound, err := s.ExecutePipeline(
+	_, err := s.executePipeline(
 		[][]string{{"echo", "one"}, {"cat"}, {"cat"}},
-		&out,
-		io.Discard,
+		lineContext{stdout: &out, stderr: io.Discard},
 	)
 	if err != nil {
-		t.Fatalf("ExecutePipeline() error = %v", err)
-	}
-	if !executed {
-		t.Fatalf("ExecutePipeline() executed = false, notFound = %q", notFound)
+		t.Fatalf("executePipeline() error = %v", err)
 	}
 	if diff := cmp.Diff("one\n", out.String()); diff != "" {
 		t.Errorf("output mismatch (-want +got):\n%s", diff)
@@ -84,18 +72,15 @@ func TestExecutePipeline_threeStages(t *testing.T) {
 
 func TestExecutePipeline_unknownCommand(t *testing.T) {
 	s := New()
-	executed, notFound, err := s.ExecutePipeline(
+	var out bytes.Buffer
+	_, err := s.executePipeline(
 		[][]string{{"echo", "hello"}, {"missing_command_xyz"}},
-		io.Discard,
-		io.Discard,
+		lineContext{stdout: &out, stderr: io.Discard},
 	)
 	if err != nil {
-		t.Fatalf("ExecutePipeline() error = %v", err)
+		t.Fatalf("executePipeline() error = %v", err)
 	}
-	if executed {
-		t.Fatal("ExecutePipeline() executed = true, want false")
-	}
-	if notFound != "missing_command_xyz" {
-		t.Errorf("notFound = %q, want missing_command_xyz", notFound)
+	if !strings.Contains(out.String(), "missing_command_xyz: command not found") {
+		t.Errorf("output = %q, want command not found message", out.String())
 	}
 }
