@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
-	shellpath "github.com/codecrafters-io/shell-starter-go/app/path"
+	"github.com/codecrafters-io/shell-starter-go/app/external"
 )
 
 // TabState tracks double-tab listing behavior while reading one input line.
@@ -29,7 +29,7 @@ func (s *Shell) HandleTab(state *TabState, buffer string) TabResult {
 		state,
 		buffer,
 		BuiltinNames(),
-		shellpath.FindAllExecutablesInPath(),
+		external.FindAllExecutablesInPath(),
 		s.listFiles,
 		s.complete,
 	)

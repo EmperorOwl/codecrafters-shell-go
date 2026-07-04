@@ -1,6 +1,6 @@
 //go:build windows
 
-package path
+package external
 
 import (
 	"os"

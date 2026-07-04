@@ -53,11 +53,11 @@ func (t *Terminal) Run() error {
 			continue
 		}
 
-		stop, err := t.shell.ExecuteLine(line, eof, stdout, stderr)
+		stop, err := t.shell.ExecuteLine(line, stdout, stderr)
 		if err != nil {
 			return err
 		}
-		if stop {
+		if stop || eof {
 			return nil
 		}
 	}

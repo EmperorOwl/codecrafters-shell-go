@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
@@ -44,7 +45,7 @@ func resolvePipelineStages(segments [][]string) ([]pipelineStage, string, bool) 
 			stages[i] = pipelineStage{fields: fields, isBuiltin: true}
 			continue
 		}
-		if _, ok := findExecutable(fields); ok {
+		if _, ok := external.FindExecutableInPath(fields[0]); ok {
 			stages[i] = pipelineStage{fields: fields, isBuiltin: false}
 			continue
 		}
@@ -61,14 +62,13 @@ func (s *Shell) runPipelineStage(stage pipelineStage, stdin io.Reader, stdout, s
 		return nil, s.runBuiltin(stage.fields, stdout, stderr)
 	}
 
-	path, _ := findExecutable(stage.fields)
-	cmd := newExternalCommand(stage.fields, path, stdout, stderr)
+	prog, _ := external.New(stage.fields, stdout, stderr)
 	if stdin != nil {
-		cmd.Stdin = stdin
+		prog.Stdin = stdin
 	} else {
-		cmd.Stdin = bytes.NewReader(nil)
+		prog.Stdin = bytes.NewReader(nil)
 	}
-	return cmd.Run(), false
+	return prog.Run(), false
 }
 
 func (s *Shell) runPipelineStages(stages []pipelineStage, stdout, stderr io.Writer) error {
@@ -156,5 +156,5 @@ func (s *Shell) executePipeline(segments [][]string, ctx lineContext) (bool, err
 	} else if err := nonExitError(execErr); err != nil {
 		return true, err
 	}
-	return ctx.stopAfter(nil)
+	return false, nil
 }

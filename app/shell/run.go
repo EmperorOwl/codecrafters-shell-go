@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
@@ -13,17 +14,6 @@ type lineContext struct {
 	stdout io.Writer
 	stderr io.Writer
 	line   string
-	eof    bool
-}
-
-func (c lineContext) stopAfter(err error) (bool, error) {
-	if err != nil {
-		return true, err
-	}
-	if c.eof {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (c lineContext) printCommandNotFound(command string) {
@@ -41,8 +31,8 @@ func nonExitError(err error) error {
 	return err
 }
 
-func (s *Shell) ExecuteLine(line string, eof bool, stdout, stderr io.Writer) (bool, error) {
-	ctx := lineContext{stdout: stdout, stderr: stderr, line: line, eof: eof}
+func (s *Shell) ExecuteLine(line string, stdout, stderr io.Writer) (bool, error) {
+	ctx := lineContext{stdout: stdout, stderr: stderr, line: line}
 	tokens := parser.Tokenize(line)
 	if segments := parser.SplitPipelineTokens(tokens); len(segments) >= 2 {
 		return s.executePipeline(segments, ctx)
@@ -54,7 +44,7 @@ func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
 	fields, redirect := parser.ParseRedirect(tokens)
 	fields, background := parser.StripBackground(fields)
 	if len(fields) == 0 {
-		return ctx.stopAfter(nil)
+		return false, nil
 	}
 
 	outputs, err := openCommandOutputs(ctx.stdout, ctx.stderr, redirect)
@@ -67,7 +57,7 @@ func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
 		if shouldExit {
 			return true, nil
 		}
-		return ctx.stopAfter(nil)
+		return false, nil
 	}
 
 	if background {
@@ -77,32 +67,34 @@ func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
 }
 
 func (s *Shell) executeBackground(fields []string, ctx lineContext, outputs commandOutputs) (bool, error) {
-	executed, pid, cmd, execErr := StartExternalProgram(fields, outputs.Stdout, outputs.Stderr)
-	if !executed {
+	var jobNumber int
+	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
+	if !ok {
 		ctx.printCommandNotFound(fields[0])
-		return ctx.stopAfter(nil)
+		return false, nil
 	}
+
+	pid, execErr := prog.RunInBackground(func() {
+		s.jobs.MarkDone(jobNumber)
+	})
 	if execErr != nil {
 		return true, execErr
 	}
 
-	jobNumber := s.jobs.Add(pid, ctx.line)
-	startBackgroundWait(cmd, func() {
-		s.jobs.MarkDone(jobNumber)
-	})
+	jobNumber = s.jobs.Add(pid, ctx.line)
 	fmt.Fprintf(ctx.stdout, "[%d] %d\n", jobNumber, pid)
-	return ctx.stopAfter(nil)
+	return false, nil
 }
 
 func (s *Shell) executeForeground(fields []string, ctx lineContext, outputs commandOutputs) (bool, error) {
-	executed, execErr := ExecuteExternalProgram(fields, outputs.Stdout, outputs.Stderr)
-	if executed {
-		if err := nonExitError(execErr); err != nil {
-			return true, err
-		}
-		return ctx.stopAfter(nil)
+	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
+	if !ok {
+		ctx.printCommandNotFound(fields[0])
+		return false, nil
 	}
 
-	ctx.printCommandNotFound(fields[0])
-	return ctx.stopAfter(nil)
+	if err := nonExitError(prog.Run()); err != nil {
+		return true, err
+	}
+	return false, nil
 }
