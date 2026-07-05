@@ -4,12 +4,12 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 
 | Package | Responsibilities |
 | --- | --- |
-| `shell` | Top-level orchestrator: owns the REPL loop, terminal, executor, job state, and completion registry. |
+| `shell` | Top-level orchestrator: owns the REPL loop (`shell.go`), tab completion (`tab.go`), terminal, executor, job state, and completion registry. |
 | `terminal` | Handles user I/O: prompt, line editing, raw mode, Tab key handling, and command output writers. |
 | `parser` | Tokenizes and parses input into commands, arguments, pipelines, and redirects. |
 | `executor` | Opens redirect outputs and runs commands: builtins, external programs, and pipelines. |
 | `jobs` | Tracks background jobs: add, mark done, reap, and list. |
-| `completion` | Match and longest-common-prefix logic for tab completion (`Complete`). |
+| `completion` | Tab match logic (`Complete`), programmable completion registry (`CompletionRegistry`), and completer script execution (`RunCompleter`). |
 | `builtins` | Builtin command implementations and dispatch (`echo`, `cd`, `exit`, `type`, `jobs`, `complete`, `pwd`). |
 | `external` | PATH lookup and running external programs (`ExternalProgram`). |
 | `files` | Directory listing for file tab completion. |
@@ -20,7 +20,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 | --- | --- | --- |
 | **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobManager`, `CompletionRegistry`, `ExternalProgram`, `CommandOutputs` | Session state, lifecycle, or dependencies wired at `New()` |
 | **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
-| **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterFuncOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterFuncOptions` lives in `shell` |
+| **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
 
 ## Class diagram
 
@@ -111,14 +111,20 @@ classDiagram
         +MarkDone(int)
         +ReapDone() []Job
         +List() []Job
+    }
+
+    class jobs {
+        <<package>>
         +FormatLines([]Job) []string
     }
 
     JobManager ..> Job
+    jobs ..> Job
 
     class completion {
         <<package>>
-        +Complete(string, []string) string, []string
+        +Complete(string, []string) string, []string, bool
+        +RunCompleter(CompleterOptions) []string, error
     }
 
     class CompletionRegistry {
@@ -127,13 +133,17 @@ classDiagram
         +Lookup(string) string, bool
     }
 
-    class CompleterFuncOptions {
+    class CompleterOptions {
+        +Path string
         +Command string
         +CurrentWord string
         +PreviousWord string
         +CompLine string
         +CompPoint int
     }
+
+    completion ..> CompletionRegistry
+    completion ..> CompleterOptions
 
     class files {
         <<package>>
@@ -180,6 +190,7 @@ classDiagram
     Shell ..> completion
     Shell ..> files
     Shell ..> builtins
+    Shell ..> jobs
     Terminal --> TabHandler : tabHandler
     Executor --> JobManager : jobManager
     Executor --> CompletionRegistry : completionRegistry
@@ -190,18 +201,24 @@ classDiagram
 
 Owned by `Shell.Run()`:
 
-1. Reap done jobs → format via `JobManager.FormatLines` → `terminal.WriteLine` each line
+1. `writeReapedJobs()` — `jobManager.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
 2. `terminal.ReadLine()`
 3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (using `terminal.Stdout()` / `terminal.Stderr()`)
 4. Repeat until exit or EOF
 
 ## Tab completion
 
+Owned by `shell/tab.go`.
+
 1. User presses Tab during `terminal.ReadLine()`
 2. `terminal` calls `tabHandler.HandleTab(state, buffer)` — implemented by `Shell`
-3. `Shell` parses the buffer, gathers candidates (`builtins.Names`, `external.FindAllExecutablesInPath`, `files.ListInDir`, programmable script output), and calls `completion.Complete`
-4. `Shell` applies double-Tab logic (bell on first Tab, listings on second) and returns `TabResult`
-5. `terminal` updates the buffer or shows match listings
+3. `Shell.completeBuffer` routes to command, programmable, or filename completion:
+   - **Commands:** deduplicated `builtins.Names` + PATH (`commandCandidates`)
+   - **Programmable:** `buildCompleterOptions` → `CompletionRegistry.Lookup` → `completion.RunCompleter`
+   - **Files:** `files.ListInDir` for the current argument
+4. `Shell` calls `completion.Complete` on the gathered candidates
+5. `Shell` applies double-Tab logic (bell on first Tab, listings on second) and returns `TabResult`
+6. `terminal` updates the buffer or shows match listings
 
 The `complete` builtin registers and unregisters scripts via `CompletionRegistry`.
 
@@ -216,7 +233,7 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | Per-invocation I/O and shell state | `BuiltinContext` |
 | Invoking builtins (single command or pipeline stage) | `Executor.ExecuteBuiltin` → `builtins.Run` |
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
-| Builtin names for tab completion | `Shell.HandleTab` via `builtins.Names` |
+| Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
 `Executor` builds `BuiltinContext` on each call, wiring `CommandOutputs` writers with injected `JobManager` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
 
