@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/google/go-cmp/cmp"
 )
@@ -49,18 +50,18 @@ func TestRun(t *testing.T) {
 			name:        "complete runs",
 			builtinName: "complete",
 			args:        []string{"-C", "/path/to/script", "git"},
-			ctx:         &Context{Completers: map[string]string{}},
+			ctx:         &Context{Completion: completion.NewCompletionRegistry()},
 		},
 		{
 			name:        "complete -p runs",
 			builtinName: "complete",
 			args:        []string{"-p", "git"},
-			ctx:         &Context{Completers: map[string]string{}},
+			ctx:         &Context{Completion: completion.NewCompletionRegistry()},
 		},
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
-			ctx:         &Context{Jobs: &jobs.JobTable{}},
+			ctx:         &Context{Jobs: &jobs.JobManager{}},
 		},
 	}
 

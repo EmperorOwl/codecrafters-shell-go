@@ -1,26 +1,26 @@
 package shell
 
 import (
-	"bytes"
+	"io"
+	"strings"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestPrintReapedJobs(t *testing.T) {
-	shell := New()
-	shell.jobs.Add(1, "cat /path/to/fifo &")
-	shell.jobs.MarkDone(1)
+func TestReapDoneJobs(t *testing.T) {
+	shell := New(strings.NewReader(""), io.Discard, io.Discard)
+	shell.jobManager.Add(1, "cat /path/to/fifo &")
+	shell.jobManager.MarkDone(1)
 
-	var out bytes.Buffer
-	shell.PrintReapedJobs(&out)
-
-	want := "[1]+  Done                    cat /path/to/fifo\n"
-	if diff := cmp.Diff(want, out.String()); diff != "" {
-		t.Errorf("PrintReapedJobs() output mismatch (-want +got):\n%s", diff)
+	got := jobs.FormatLines(shell.jobManager.ReapDone())
+	want := []string{"[1]+  Done                    cat /path/to/fifo"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("FormatLines(ReapDone()) mismatch (-want +got):\n%s", diff)
 	}
 
-	if done := shell.jobs.ReapDone(); len(done) != 0 {
-		t.Errorf("PrintReapedJobs() left %d done jobs in table", len(done))
+	if done := shell.jobManager.ReapDone(); len(done) != 0 {
+		t.Errorf("ReapDone() left %d done jobs in table", len(done))
 	}
 }

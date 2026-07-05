@@ -1,4 +1,4 @@
-package shell
+package executor
 
 import (
 	"io"
@@ -7,31 +7,34 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-type commandOutputs struct {
+// CommandOutputs holds writers for command stdout and stderr, with optional cleanup.
+type CommandOutputs struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	close  func()
 }
 
-func (o commandOutputs) Close() {
+// Close releases redirect file handles when present.
+func (o CommandOutputs) Close() {
 	if o.close != nil {
 		o.close()
 	}
 }
 
-func openCommandOutputs(stdout, stderr io.Writer, redirect parser.Redirect) (commandOutputs, error) {
+// OpenCommandOutputs applies redirect paths to the default stdout and stderr writers.
+func (e *Executor) OpenCommandOutputs(stdout, stderr io.Writer, redirect parser.Redirect) (CommandOutputs, error) {
 	out, closeStdout, err := openRedirect(stdout, redirect.StdoutPath, redirect.StdoutAppend)
 	if err != nil {
-		return commandOutputs{}, err
+		return CommandOutputs{}, err
 	}
 
 	errOut, closeStderr, err := openRedirect(stderr, redirect.StderrPath, redirect.StderrAppend)
 	if err != nil {
 		closeStdout()
-		return commandOutputs{}, err
+		return CommandOutputs{}, err
 	}
 
-	return commandOutputs{
+	return CommandOutputs{
 		Stdout: out,
 		Stderr: errOut,
 		close: func() {

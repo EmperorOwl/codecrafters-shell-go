@@ -13,17 +13,17 @@ import (
 func TestJobs(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(*jobs.JobTable)
+		setup         func(*jobs.JobManager)
 		wantLines     []string
 		wantRemaining []jobs.Job
 	}{
 		{
 			name:  "no jobs",
-			setup: func(*jobs.JobTable) {},
+			setup: func(*jobs.JobManager) {},
 		},
 		{
 			name: "one running job",
-			setup: func(t *jobs.JobTable) {
+			setup: func(t *jobs.JobManager) {
 				t.Add(1, "sleep 10 &")
 			},
 			wantLines: []string{
@@ -38,7 +38,7 @@ func TestJobs(t *testing.T) {
 		},
 		{
 			name: "done job is reaped",
-			setup: func(t *jobs.JobTable) {
+			setup: func(t *jobs.JobManager) {
 				t.Add(1, "cat /path/to/fifo &")
 				t.MarkDone(1)
 			},
@@ -50,7 +50,7 @@ func TestJobs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table jobs.JobTable
+			var table jobs.JobManager
 			tt.setup(&table)
 
 			var out bytes.Buffer
@@ -64,7 +64,7 @@ func TestJobs(t *testing.T) {
 				t.Errorf("Jobs() output mismatch (-want +got):\n%s", diff)
 			}
 
-			remaining := table.ListForDisplay()
+			remaining := table.List()
 			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("Jobs() remaining jobs mismatch (-want +got):\n%s", diff)
 			}

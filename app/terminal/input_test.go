@@ -3,11 +3,11 @@ package terminal
 import (
 	"bufio"
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
-	"github.com/codecrafters-io/shell-starter-go/app/shell"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -17,8 +17,29 @@ type testTabHandler struct {
 	listFiles   completion.FileLister
 }
 
-func (h testTabHandler) HandleTab(state *shell.TabState, buffer string) shell.TabResult {
-	return shell.ApplyTabAction(state, buffer, h.builtins, h.executables, h.listFiles, nil)
+func (h testTabHandler) HandleTab(state *TabState, buffer string) TabResult {
+	newBuffer, listings := completion.ApplyTab(
+		h.builtins,
+		h.executables,
+		h.listFiles,
+		nil,
+		buffer,
+	)
+
+	if len(listings) > 0 {
+		if slices.Equal(state.PendingListings, listings) {
+			state.PendingListings = nil
+			return TabResult{Buffer: buffer, ListingsToShow: listings}
+		}
+		state.PendingListings = listings
+		return TabResult{Buffer: buffer, RingBell: true}
+	}
+
+	state.PendingListings = nil
+	if newBuffer != buffer {
+		return TabResult{Buffer: newBuffer}
+	}
+	return TabResult{Buffer: buffer, RingBell: true}
 }
 
 func TestReadLineRaw(t *testing.T) {
@@ -119,18 +140,18 @@ func TestReadLineRaw(t *testing.T) {
 			tabHandler := testTabHandler{builtins: builtins, executables: tt.executables}
 
 			writePrompt(&out, true)
-			gotLine, gotEOF, err := ReadLine(reader, &out, true, tabHandler)
+			gotLine, gotEOF, err := readLine(reader, &out, true, tabHandler)
 			if err != nil {
-				t.Fatalf("ReadLine() error = %v", err)
+				t.Fatalf("readLine() error = %v", err)
 			}
 			if diff := cmp.Diff(tt.wantLine, gotLine); diff != "" {
-				t.Errorf("ReadLine() line mismatch (-want +got):\n%s", diff)
+				t.Errorf("readLine() line mismatch (-want +got):\n%s", diff)
 			}
 			if diff := cmp.Diff(tt.wantEOF, gotEOF); diff != "" {
-				t.Errorf("ReadLine() eof mismatch (-want +got):\n%s", diff)
+				t.Errorf("readLine() eof mismatch (-want +got):\n%s", diff)
 			}
 			if diff := cmp.Diff(tt.wantOut, out.String()); diff != "" {
-				t.Errorf("ReadLine() output mismatch (-want +got):\n%s", diff)
+				t.Errorf("readLine() output mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -142,30 +163,30 @@ func TestReadLineRaw_SkipsLFAfterCR(t *testing.T) {
 	var out bytes.Buffer
 
 	writePrompt(&out, true)
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, nil)
+	line, eof, err := readLine(bufio.NewReader(strings.NewReader("hi\r")), &out, true, nil)
 	if err != nil {
-		t.Fatalf("first ReadLine() error = %v", err)
+		t.Fatalf("first readLine() error = %v", err)
 	}
 	if diff := cmp.Diff("hi", line); diff != "" {
-		t.Errorf("first ReadLine() line mismatch (-want +got):\n%s", diff)
+		t.Errorf("first readLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
-		t.Error("first ReadLine() eof = true, want false")
+		t.Error("first readLine() eof = true, want false")
 	}
 	if !skipNextLF {
 		t.Error("skipNextLF = false after CR, want true")
 	}
 
 	writePrompt(&out, true)
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("\n")), &out, true, nil)
+	line, eof, err = readLine(bufio.NewReader(strings.NewReader("\n")), &out, true, nil)
 	if err != nil {
-		t.Fatalf("second ReadLine() error = %v", err)
+		t.Fatalf("second readLine() error = %v", err)
 	}
 	if diff := cmp.Diff("", line); diff != "" {
-		t.Errorf("second ReadLine() line mismatch (-want +got):\n%s", diff)
+		t.Errorf("second readLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if !eof {
-		t.Error("second ReadLine() eof = false, want true")
+		t.Error("second readLine() eof = false, want true")
 	}
 	if skipNextLF {
 		t.Error("skipNextLF = true after skipped LF, want false")
@@ -191,27 +212,27 @@ func TestReadLineRaw_tabCompletesFileOnSecondPrompt(t *testing.T) {
 
 	skipNextLF = false
 	writePrompt(&out, true)
-	line, eof, err := ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
+	line, eof, err := readLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
 	if err != nil {
-		t.Fatalf("first ReadLine() error = %v", err)
+		t.Fatalf("first readLine() error = %v", err)
 	}
 	if diff := cmp.Diff("ls app/", line); diff != "" {
-		t.Errorf("first ReadLine() line mismatch (-want +got):\n%s", diff)
+		t.Errorf("first readLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
-		t.Error("first ReadLine() eof = true, want false")
+		t.Error("first readLine() eof = true, want false")
 	}
 
 	skipNextLF = false
 	writePrompt(&out, true)
-	line, eof, err = ReadLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
+	line, eof, err = readLine(bufio.NewReader(strings.NewReader("ls a\t\r")), &out, true, tabHandler)
 	if err != nil {
-		t.Fatalf("second ReadLine() error = %v", err)
+		t.Fatalf("second readLine() error = %v", err)
 	}
 	if diff := cmp.Diff("ls app/", line); diff != "" {
-		t.Errorf("second ReadLine() line mismatch (-want +got):\n%s", diff)
+		t.Errorf("second readLine() line mismatch (-want +got):\n%s", diff)
 	}
 	if eof {
-		t.Error("second ReadLine() eof = true, want false")
+		t.Error("second readLine() eof = true, want false")
 	}
 }

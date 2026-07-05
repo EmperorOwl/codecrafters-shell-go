@@ -2,63 +2,63 @@ package terminal
 
 import (
 	"bufio"
+	"fmt"
 	"io"
-
-	"github.com/codecrafters-io/shell-starter-go/app/shell"
 )
 
-// Terminal handles shell I/O; Shell handles command logic.
+// Terminal handles shell I/O.
 type Terminal struct {
-	shell   *shell.Shell
-	stdin   io.Reader
-	stdout  io.Writer
-	stderr  io.Writer
-	session *Session
-	reader  *bufio.Reader
+	tabHandler TabHandler
+	stdin      io.Reader
+	stdout     io.Writer
+	stderr     io.Writer
+	session    *Session
+	reader     *bufio.Reader
+	rawMode    bool
 }
 
-func New(sh *shell.Shell, stdin io.Reader, stdout, stderr io.Writer) *Terminal {
+// New returns a terminal wired to the given streams and tab handler.
+func New(tabHandler TabHandler, stdin io.Reader, stdout, stderr io.Writer) *Terminal {
 	return &Terminal{
-		shell:   sh,
-		stdin:   stdin,
-		stdout:  stdout,
-		stderr:  stderr,
-		session: NewSession(stdin),
-		reader:  bufio.NewReader(stdin),
+		tabHandler: tabHandler,
+		stdin:      stdin,
+		stdout:     stdout,
+		stderr:     stderr,
+		session:    NewSession(stdin),
+		reader:     bufio.NewReader(stdin),
 	}
 }
 
-func (t *Terminal) Run() error {
-	defer t.session.Close()
+// ReadLine reads a line after the prompt has already been displayed.
+func (t *Terminal) ReadLine() (line string, eof bool, err error) {
+	stdout := WrapWriter(t.stdout, t.rawMode)
+	writePrompt(t.stdout, t.rawMode)
+	return readLine(t.reader, stdout, t.rawMode, t.tabHandler)
+}
 
-	for {
-		rawMode := t.session.PrepareRead()
-		stdout := WrapWriter(t.stdout, rawMode)
-		stderr := WrapWriter(t.stderr, rawMode)
+// WriteLine writes a single line to stdout, including a trailing newline.
+func (t *Terminal) WriteLine(text string) {
+	stdout := WrapWriter(t.stdout, t.session.RawMode())
+	fmt.Fprintln(stdout, text)
+}
 
-		t.shell.PrintReapedJobs(stdout)
+// Stdout returns the stdout writer for command output, with raw-mode wrapping when active.
+func (t *Terminal) Stdout() io.Writer {
+	return WrapWriter(t.stdout, t.rawMode)
+}
 
-		writePrompt(t.stdout, rawMode)
-		line, eof, err := ReadLine(t.reader, stdout, rawMode, t.shell)
-		if err != nil {
-			return err
-		}
-		if eof && line == "" {
-			return nil
-		}
-		if line == "" {
-			if eof {
-				return nil
-			}
-			continue
-		}
+// Stderr returns the stderr writer for command output, with raw-mode wrapping when active.
+func (t *Terminal) Stderr() io.Writer {
+	return WrapWriter(t.stderr, t.rawMode)
+}
 
-		stop, err := t.shell.ExecuteLine(line, stdout, stderr)
-		if err != nil {
-			return err
-		}
-		if stop || eof {
-			return nil
-		}
-	}
+// PrepareRead re-enables raw mode before the next prompt.
+func (t *Terminal) PrepareRead() bool {
+	t.rawMode = t.session.PrepareRead()
+	return t.rawMode
+}
+
+// Close restores the terminal session.
+func (t *Terminal) Close() error {
+	return t.session.Close()
 }

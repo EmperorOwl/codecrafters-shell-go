@@ -4,15 +4,17 @@ import (
 	"io"
 	"slices"
 
+	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 )
 
+// Context holds per-invocation I/O and shell state for a builtin command.
 type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	Completers map[string]string
-	Jobs       *jobs.JobTable
+	Jobs       *jobs.JobManager
+	Completion *completion.CompletionRegistry
 }
 
 type Handler func(ctx *Context, args []string) (exit bool, err error)

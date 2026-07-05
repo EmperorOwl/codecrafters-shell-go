@@ -21,10 +21,13 @@ type CompleterFuncOptions struct {
 // A nil return means no completer is registered for the command.
 type CompleteHandler func(opts CompleterFuncOptions) []string
 
-// CompleteCommand search and runs the registered completer script for the given command,
-// returning the completion candidates
-func CompleteCommand(completers map[string]string, opts CompleterFuncOptions) []string {
-	scriptPath, ok := completers[opts.Command]
+// CompleteCommand runs the registered completer script for the given command,
+// returning the completion candidates.
+func CompleteCommand(registry *CompletionRegistry, opts CompleterFuncOptions) []string {
+	if registry == nil {
+		return nil
+	}
+	scriptPath, ok := registry.Lookup(opts.Command)
 	if !ok {
 		return nil
 	}

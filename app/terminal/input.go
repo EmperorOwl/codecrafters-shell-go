@@ -4,16 +4,13 @@ import (
 	"bufio"
 	"io"
 	"strings"
-
-	"github.com/codecrafters-io/shell-starter-go/app/shell"
 )
 
 // skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
-// on the next readLineRaw call instead of submitting an empty line.
+// on the next readLine call instead of submitting an empty line.
 var skipNextLF bool
 
-// ReadLine reads a line after the prompt has already been displayed.
-func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, tabHandler shell.TabHandler) (line string, eof bool, err error) {
+func readLine(reader *bufio.Reader, w io.Writer, rawMode bool, tabHandler TabHandler) (line string, eof bool, err error) {
 	if rawMode {
 		return readLineRaw(reader, w, tabHandler)
 	}
@@ -28,9 +25,9 @@ func ReadLine(reader *bufio.Reader, w io.Writer, rawMode bool, tabHandler shell.
 	return strings.TrimSpace(text), false, nil
 }
 
-func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler shell.TabHandler) (string, bool, error) {
+func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler TabHandler) (string, bool, error) {
 	var buffer []byte
-	var tabState shell.TabState
+	var tabState TabState
 
 	for {
 		b, err := reader.ReadByte()

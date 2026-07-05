@@ -19,14 +19,14 @@ type Job struct {
 	Status  string
 }
 
-type JobTable struct {
+type JobManager struct {
 	mu   sync.Mutex
 	jobs []Job
 }
 
 // nextJobNumberLocked returns the next job number to assign. The table must
 // already be locked. Empty table yields 1; otherwise max existing number + 1.
-func (t *JobTable) nextJobNumberLocked() int {
+func (t *JobManager) nextJobNumberLocked() int {
 	if len(t.jobs) == 0 {
 		return 1
 	}
@@ -40,7 +40,7 @@ func (t *JobTable) nextJobNumberLocked() int {
 }
 
 // Add registers a new background job and returns its job number.
-func (t *JobTable) Add(pid int, command string) int {
+func (t *JobManager) Add(pid int, command string) int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -56,7 +56,7 @@ func (t *JobTable) Add(pid int, command string) int {
 }
 
 // MarkDone marks the given job as finished and strips the trailing " &".
-func (t *JobTable) MarkDone(jobNumber int) {
+func (t *JobManager) MarkDone(jobNumber int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -71,7 +71,7 @@ func (t *JobTable) MarkDone(jobNumber int) {
 }
 
 // ReapDone removes finished jobs from the table and returns them.
-func (t *JobTable) ReapDone() []Job {
+func (t *JobManager) ReapDone() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -88,8 +88,8 @@ func (t *JobTable) ReapDone() []Job {
 	return done
 }
 
-// ListForDisplay returns a snapshot of all jobs currently in the table.
-func (t *JobTable) ListForDisplay() []Job {
+// List returns a snapshot of all jobs currently in the table.
+func (t *JobManager) List() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -98,10 +98,19 @@ func (t *JobTable) ListForDisplay() []Job {
 	return display
 }
 
+// FormatLines returns bash-style display lines for the given jobs.
+func FormatLines(jobList []Job) []string {
+	lines := make([]string, len(jobList))
+	for i, job := range jobList {
+		lines[i] = formatLine(job, i, len(jobList))
+	}
+	return lines
+}
+
 // WriteAll prints each job on its own line using bash-style formatting.
 func WriteAll(out io.Writer, jobList []Job) {
-	for i, job := range jobList {
-		fmt.Fprintln(out, formatLine(job, i, len(jobList)))
+	for _, line := range FormatLines(jobList) {
+		fmt.Fprintln(out, line)
 	}
 }
 

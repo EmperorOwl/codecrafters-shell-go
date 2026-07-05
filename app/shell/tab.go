@@ -6,43 +6,27 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
+	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 )
 
-// TabState tracks double-tab listing behavior while reading one input line.
-type TabState struct {
-	pendingListings []string
-}
-
-// TabResult tells the terminal how to update the input line after Tab.
-type TabResult struct {
-	Buffer         string
-	ListingsToShow []string
-	RingBell       bool
-}
-
-// TabHandler handles tab completion for an in-progress input line.
-type TabHandler interface {
-	HandleTab(state *TabState, buffer string) TabResult
-}
-
-func (s *Shell) HandleTab(state *TabState, buffer string) TabResult {
-	return ApplyTabAction(
+func (s *Shell) HandleTab(state *terminal.TabState, buffer string) terminal.TabResult {
+	return applyTabAction(
 		state,
 		buffer,
 		builtins.Names(),
 		external.FindAllExecutablesInPath(),
 		s.listFiles,
-		s.complete,
+		s.programmableComplete,
 	)
 }
 
-func ApplyTabAction(
-	state *TabState,
+func applyTabAction(
+	state *terminal.TabState,
 	buffer string,
 	builtinsList, executables []string,
 	listFiles completion.FileLister,
 	completeHandler completion.CompleteHandler,
-) TabResult {
+) terminal.TabResult {
 	newBuffer, listings := completion.ApplyTab(
 		builtinsList,
 		executables,
@@ -52,17 +36,17 @@ func ApplyTabAction(
 	)
 
 	if len(listings) > 0 {
-		if slices.Equal(state.pendingListings, listings) {
-			state.pendingListings = nil
-			return TabResult{Buffer: buffer, ListingsToShow: listings}
+		if slices.Equal(state.PendingListings, listings) {
+			state.PendingListings = nil
+			return terminal.TabResult{Buffer: buffer, ListingsToShow: listings}
 		}
-		state.pendingListings = listings
-		return TabResult{Buffer: buffer, RingBell: true}
+		state.PendingListings = listings
+		return terminal.TabResult{Buffer: buffer, RingBell: true}
 	}
 
-	state.pendingListings = nil
+	state.PendingListings = nil
 	if newBuffer != buffer {
-		return TabResult{Buffer: newBuffer}
+		return terminal.TabResult{Buffer: newBuffer}
 	}
-	return TabResult{Buffer: buffer, RingBell: true}
+	return terminal.TabResult{Buffer: buffer, RingBell: true}
 }
