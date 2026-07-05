@@ -26,6 +26,13 @@ func TestComplete(t *testing.T) {
 			wantUnique: true,
 		},
 		{
+			name:       "completes echo with builtin and path duplicate",
+			candidates: []string{"cd", "echo", "exit", "pwd", "type", "echo"},
+			prefix:     "ech",
+			wantToken:  "echo",
+			wantUnique: true,
+		},
+		{
 			name:       "completes exit",
 			candidates: builtins,
 			prefix:     "exi",

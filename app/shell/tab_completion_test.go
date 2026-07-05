@@ -95,11 +95,23 @@ func TestCompleteArgument(t *testing.T) {
 func TestCompleteCommand(t *testing.T) {
 	s := New(strings.NewReader(""), io.Discard, io.Discard)
 
-	gotBuffer, gotListings := s.completeCommand("exi")
-	if diff := cmp.Diff("exit ", gotBuffer); diff != "" {
-		t.Errorf("completeCommand() buffer mismatch (-want +got):\n%s", diff)
+	tests := []struct {
+		buffer     string
+		wantBuffer string
+	}{
+		{buffer: "ech", wantBuffer: "echo "},
+		{buffer: "exi", wantBuffer: "exit "},
 	}
-	if diff := cmp.Diff([]string(nil), gotListings, cmpopts.EquateEmpty()); diff != "" {
-		t.Errorf("completeCommand() listings mismatch (-want +got):\n%s", diff)
+
+	for _, tt := range tests {
+		t.Run(tt.buffer, func(t *testing.T) {
+			gotBuffer, gotListings := s.completeCommand(tt.buffer)
+			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
+				t.Errorf("completeCommand(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
+			}
+			if diff := cmp.Diff([]string(nil), gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("completeCommand(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
+			}
+		})
 	}
 }

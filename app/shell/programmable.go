@@ -3,6 +3,7 @@ package shell
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -128,8 +129,7 @@ func (s *Shell) completeBuffer(buffer string) (newBuffer string, listings []stri
 }
 
 func (s *Shell) completeCommand(buffer string) (string, []string) {
-	candidates := append(builtins.Names(), external.FindAllExecutablesInPath()...)
-	token, listings, unique := completion.Complete(buffer, candidates)
+	token, listings, unique := completion.Complete(buffer, commandCandidates())
 	if len(listings) > 0 {
 		return buffer, listings
 	}
@@ -185,6 +185,31 @@ func (s *Shell) completeArgument(buffer string, candidates []string) (string, []
 		return bufferPrefix + dirPath + token + suffix, nil
 	}
 	return buffer, nil
+}
+
+func commandCandidates() []string {
+	candidates := builtins.Names()
+	seen := make(map[string]struct{}, len(candidates))
+	for _, name := range candidates {
+		seen[name] = struct{}{}
+	}
+	for _, name := range external.FindAllExecutablesInPath() {
+		name = completionCommandName(name)
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		candidates = append(candidates, name)
+	}
+	return candidates
+}
+
+func completionCommandName(name string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".exe", ".com", ".bat", ".cmd":
+		return strings.TrimSuffix(name, filepath.Ext(name))
+	}
+	return name
 }
 
 func splitDirToken(token string) (dirPath, prefix string) {

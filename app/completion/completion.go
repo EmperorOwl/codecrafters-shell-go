@@ -32,7 +32,7 @@ func findMatches(candidates []string, prefix string) []string {
 		}
 	}
 	slices.Sort(result)
-	return result
+	return slices.Compact(result)
 }
 
 func longestCommonPrefix(candidates []string) string {
