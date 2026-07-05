@@ -3,13 +3,11 @@ package shell
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/executor"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
-	"github.com/codecrafters-io/shell-starter-go/app/files"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
@@ -175,16 +173,4 @@ func validatePipelineSegments(segments [][]string) (notFound string, ok bool) {
 		}
 	}
 	return "", true
-}
-
-func (s *Shell) listFiles(dir string) []string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil
-	}
-	return files.ListInDir(cwd, dir)
-}
-
-func (s *Shell) programmableComplete(opts completion.CompleterFuncOptions) []string {
-	return completion.CompleteCommand(s.completionRegistry, opts)
 }

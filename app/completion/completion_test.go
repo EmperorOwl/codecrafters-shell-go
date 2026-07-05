@@ -7,61 +7,97 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestApplyTab(t *testing.T) {
-	builtinsList := []string{"cd", "echo", "exit", "pwd", "type"}
-	listFiles := func(dir string) []string {
-		if dir == "" {
-			return []string{"first.txt", "readme.txt", "second.txt"}
-		}
-		return nil
-	}
+func TestComplete(t *testing.T) {
+	builtins := []string{"cd", "echo", "exit", "pwd", "type"}
 
 	tests := []struct {
-		name           string
-		executables    []string
-		completeHandler CompleteHandler
-		buffer         string
-		wantBuffer     string
+		name         string
+		candidates   []string
+		prefix       string
+		wantToken    string
+		wantListings []string
+		wantUnique   bool
 	}{
 		{
-			name:       "builtin command completion",
-			buffer:     "ech",
-			wantBuffer: "echo ",
+			name:       "completes echo",
+			candidates: builtins,
+			prefix:     "ech",
+			wantToken:  "echo",
+			wantUnique: true,
 		},
 		{
-			name:        "external command completion",
-			executables: []string{"custom_executable"},
-			buffer:      "custom",
-			wantBuffer:  "custom_executable ",
+			name:       "completes exit",
+			candidates: builtins,
+			prefix:     "exi",
+			wantToken:  "exit",
+			wantUnique: true,
 		},
 		{
-			name:       "filename completion",
-			buffer:     "cat re",
-			wantBuffer: "cat readme.txt ",
+			name:       "no match",
+			candidates: builtins,
+			prefix:     "xyz",
+			wantToken:  "xyz",
 		},
 		{
-			name:       "later argument filename completion",
-			buffer:     "echo first.txt sec",
-			wantBuffer: "echo first.txt second.txt ",
+			name:         "ambiguous prefix lists matches",
+			candidates:   builtins,
+			prefix:       "e",
+			wantToken:    "e",
+			wantListings: []string{"echo", "exit"},
 		},
 		{
-			name: "programmable completion",
-			completeHandler: func(CompleterFuncOptions) []string {
-				return []string{"run"}
-			},
-			buffer:     "docker ",
-			wantBuffer: "docker run ",
+			name:         "empty prefix lists all candidates",
+			candidates:   builtins,
+			prefix:       "",
+			wantToken:    "",
+			wantListings: builtins,
+		},
+		{
+			name:       "completes executable",
+			candidates: []string{"custom_executable"},
+			prefix:     "custom",
+			wantToken:  "custom_executable",
+			wantUnique: true,
+		},
+		{
+			name:         "ambiguous executable prefix lists matches",
+			candidates:   []string{"xyz_bar", "xyz_baz", "xyz_quz"},
+			prefix:       "xyz_",
+			wantToken:    "xyz_",
+			wantListings: []string{"xyz_bar", "xyz_baz", "xyz_quz"},
+		},
+		{
+			name:       "completes to longest common prefix",
+			candidates: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			prefix:     "xyz_",
+			wantToken:  "xyz_foo",
+		},
+		{
+			name:       "completes to next longest common prefix",
+			candidates: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			prefix:     "xyz_foo_",
+			wantToken:  "xyz_foo_bar",
+		},
+		{
+			name:       "completes final unique match",
+			candidates: []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"},
+			prefix:     "xyz_foo_bar_",
+			wantToken:  "xyz_foo_bar_baz",
+			wantUnique: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := ApplyTab(builtinsList, tt.executables, listFiles, tt.completeHandler, tt.buffer)
-			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
-				t.Errorf("ApplyTab(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
+			gotToken, gotListings, gotUnique := Complete(tt.prefix, tt.candidates)
+			if diff := cmp.Diff(tt.wantToken, gotToken); diff != "" {
+				t.Errorf("Complete(%q) token mismatch (-want +got):\n%s", tt.prefix, diff)
 			}
-			if diff := cmp.Diff([]string(nil), gotListings, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("ApplyTab(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
+			if diff := cmp.Diff(tt.wantListings, gotListings, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("Complete(%q) listings mismatch (-want +got):\n%s", tt.prefix, diff)
+			}
+			if diff := cmp.Diff(tt.wantUnique, gotUnique); diff != "" {
+				t.Errorf("Complete(%q) unique mismatch (-want +got):\n%s", tt.prefix, diff)
 			}
 		})
 	}

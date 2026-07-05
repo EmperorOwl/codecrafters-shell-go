@@ -9,7 +9,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 | `parser` | Tokenizes and parses input into commands, arguments, pipelines, and redirects. |
 | `executor` | Opens redirect outputs and runs commands: builtins, external programs, and pipelines. |
 | `jobs` | Tracks background jobs: add, mark done, reap, and list. |
-| `completion` | Pure tab-completion logic: command, file, and programmable completion. |
+| `completion` | Match and longest-common-prefix logic for tab completion (`Complete`). |
 | `builtins` | Builtin command implementations and dispatch (`echo`, `cd`, `exit`, `type`, `jobs`, `complete`, `pwd`). |
 | `external` | PATH lookup and running external programs (`ExternalProgram`). |
 | `files` | Directory listing for file tab completion. |
@@ -20,7 +20,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 | --- | --- | --- |
 | **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobManager`, `CompletionRegistry`, `ExternalProgram`, `CommandOutputs` | Session state, lifecycle, or dependencies wired at `New()` |
 | **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
-| **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterFuncOptions`, `TabState`, `TabResult` | Data passed between layers |
+| **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterFuncOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterFuncOptions` lives in `shell` |
 
 ## Class diagram
 
@@ -116,20 +116,18 @@ classDiagram
 
     JobManager ..> Job
 
+    class completion {
+        <<package>>
+        +Complete(string, []string) string, []string
+    }
+
     class CompletionRegistry {
         +Register(string, string)
         +Unregister(string)
         +Lookup(string) string, bool
     }
 
-    class completion {
-        <<package>>
-        +ApplyTab([]string, []string, FileLister, CompleteHandler, string) string, []string
-        +CompleteCommand(CompletionRegistry, CompleterFuncOptions) []string
-    }
-
     class CompleterFuncOptions {
-        +ScriptPath string
         +Command string
         +CurrentWord string
         +PreviousWord string
@@ -141,8 +139,6 @@ classDiagram
         <<package>>
         +ListInDir(string, string) []string
     }
-
-    completion ..> CompleterFuncOptions
 
     class TabHandler {
         <<interface>>
@@ -203,7 +199,7 @@ Owned by `Shell.Run()`:
 
 1. User presses Tab during `terminal.ReadLine()`
 2. `terminal` calls `tabHandler.HandleTab(state, buffer)` — implemented by `Shell`
-3. `Shell` gathers candidates (`builtins.Names`, `external.FindAllExecutablesInPath`, `files.ListInDir`, programmable registry) and calls `completion.ApplyTab`
+3. `Shell` parses the buffer, gathers candidates (`builtins.Names`, `external.FindAllExecutablesInPath`, `files.ListInDir`, programmable script output), and calls `completion.Complete`
 4. `Shell` applies double-Tab logic (bell on first Tab, listings on second) and returns `TabResult`
 5. `terminal` updates the buffer or shows match listings
 
