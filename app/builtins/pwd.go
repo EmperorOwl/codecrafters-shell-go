@@ -17,3 +17,8 @@ func Pwd(out io.Writer) {
 	}
 	fmt.Fprintln(out, cwd)
 }
+
+func pwdBuiltin(ctx *Context, args []string) (bool, error) {
+	Pwd(ctx.Stdout)
+	return false, nil
+}

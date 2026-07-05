@@ -46,3 +46,8 @@ func Complete(stdout, stderr io.Writer, args []string, completers map[string]str
 		delete(completers, args[1])
 	}
 }
+
+func completeBuiltin(ctx *Context, args []string) (bool, error) {
+	Complete(ctx.Stdout, ctx.Stderr, args, ctx.Completers)
+	return false, nil
+}

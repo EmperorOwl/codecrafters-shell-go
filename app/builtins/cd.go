@@ -34,3 +34,12 @@ func Cd(stderr io.Writer, directory string) {
 		fmt.Fprintln(stderr, CdErrorMessage(directory))
 	}
 }
+
+func cdBuiltin(ctx *Context, args []string) (bool, error) {
+	directory := ""
+	if len(args) > 0 {
+		directory = args[0]
+	}
+	Cd(ctx.Stderr, directory)
+	return false, nil
+}

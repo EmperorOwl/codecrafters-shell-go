@@ -12,3 +12,8 @@ func Jobs(out io.Writer, table *jobs.JobTable) {
 	table.ReapDone()
 	jobs.WriteAll(out, display)
 }
+
+func jobsBuiltin(ctx *Context, args []string) (bool, error) {
+	Jobs(ctx.Stdout, ctx.Jobs)
+	return false, nil
+}

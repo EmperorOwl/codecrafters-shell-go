@@ -17,9 +17,17 @@ type lineContext struct {
 	line   string
 }
 
-type resolvedCommand struct {
-	builtin  *builtins.Builtin
-	external *external.ExternalProgram
+func commandFound(fields []string) (notFound string, ok bool) {
+	if len(fields) == 0 {
+		return "", false
+	}
+	if builtins.IsBuiltin(fields[0]) {
+		return "", true
+	}
+	if _, found := external.FindExecutableInPath(fields[0]); found {
+		return "", true
+	}
+	return fields[0], false
 }
 
 func (c lineContext) printCommandNotFound(command string) {
@@ -37,20 +45,13 @@ func nonExitError(err error) error {
 	return err
 }
 
-func (s *Shell) resolveCommand(fields []string, stdout, stderr io.Writer) (resolvedCommand, string, bool) {
-	if len(fields) == 0 {
-		return resolvedCommand{}, "", false
+func (s *Shell) builtinContext(stdout, stderr io.Writer) *builtins.Context {
+	return &builtins.Context{
+		Stdout:     stdout,
+		Stderr:     stderr,
+		Completers: s.completers,
+		Jobs:       &s.jobs,
 	}
-	if builtins.IsBuiltin(fields[0]) {
-		return resolvedCommand{
-			builtin: builtins.New(fields[0], fields[1:], stdout, stderr, s.completers, &s.jobs),
-		}, "", true
-	}
-	prog, ok := external.New(fields, stdout, stderr)
-	if !ok {
-		return resolvedCommand{}, fields[0], false
-	}
-	return resolvedCommand{external: prog}, "", true
 }
 
 func (s *Shell) ExecuteLine(line string, stdout, stderr io.Writer) (bool, error) {
@@ -75,31 +76,33 @@ func (s *Shell) executeCommand(tokens []string, ctx lineContext) (bool, error) {
 	}
 	defer outputs.Close()
 
-	cmd, notFound, ok := s.resolveCommand(fields, outputs.Stdout, outputs.Stderr)
+	notFound, ok := commandFound(fields)
 	if !ok {
 		ctx.printCommandNotFound(notFound)
 		return false, nil
 	}
 
-	if cmd.builtin != nil {
-		return s.executeBuiltin(cmd.builtin)
+	if builtins.IsBuiltin(fields[0]) {
+		exitShell, err := builtins.Run(fields[0], fields[1:], s.builtinContext(outputs.Stdout, outputs.Stderr))
+		if exitShell {
+			return true, nil
+		}
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	}
+
+	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
+	if !ok {
+		ctx.printCommandNotFound(fields[0])
+		return false, nil
 	}
 
 	if background {
-		return s.executeBackground(cmd.external, ctx)
+		return s.executeBackground(prog, ctx)
 	}
-	return s.executeForeground(cmd.external)
-}
-
-func (s *Shell) executeBuiltin(cmd *builtins.Builtin) (bool, error) {
-	exitShell, err := cmd.Run()
-	if exitShell {
-		return true, nil
-	}
-	if err != nil {
-		return true, err
-	}
-	return false, nil
+	return s.executeForeground(prog)
 }
 
 func (s *Shell) executeBackground(prog *external.ExternalProgram, ctx lineContext) (bool, error) {
