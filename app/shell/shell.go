@@ -48,9 +48,7 @@ func (s *Shell) Run() error {
 	for {
 		s.terminal.PrepareRead()
 
-		for _, line := range jobs.FormatLines(s.jobManager.ReapDone()) {
-			s.terminal.WriteLine(line)
-		}
+		s.writeReapedJobs()
 
 		line, eof, err := s.terminal.ReadLine()
 		if err != nil {
@@ -150,6 +148,13 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 		return true, err
 	}
 	return false, nil
+}
+
+// writeReapedJobs prints any finished background jobs before the next prompt.
+func (s *Shell) writeReapedJobs() {
+	for _, line := range jobs.FormatLines(s.jobManager.ReapDone()) {
+		s.terminal.WriteLine(line)
+	}
 }
 
 func commandFound(fields []string) (notFound string, ok bool) {
