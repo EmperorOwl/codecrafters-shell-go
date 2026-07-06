@@ -25,7 +25,7 @@ type Shell struct {
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 	jobTable := &jobs.JobTable{}
 	completionRegistry := completion.NewCompletionRegistry()
-	ex := executor.New(jobTable, completionRegistry)
+	ex := executor.New(jobTable, completionRegistry, stdin)
 
 	s := &Shell{
 		executor:           ex,
@@ -33,7 +33,6 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 		completionRegistry: completionRegistry,
 	}
 	s.terminal = terminal.New(s, stdin, stdout, stderr)
-	ex.SetStdin(stdin)
 	return s
 }
 
@@ -97,11 +96,14 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 		return false, nil
 	}
 
-	stdout := s.terminal.Stdout()
-	stderr := s.terminal.Stderr()
+	outputs := executor.Outputs{
+		Stdout:   s.terminal.Stdout(),
+		Stderr:   s.terminal.Stderr(),
+		Redirect: redirect,
+	}
 
 	if builtins.IsBuiltin(fields[0]) {
-		exitShell, err := s.executor.ExecuteBuiltin(stdout, stderr, fields, redirect)
+		exitShell, err := s.executor.ExecuteBuiltin(outputs, fields)
 		if exitShell {
 			return true, nil
 		}
@@ -109,7 +111,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	}
 
 	if background {
-		jobNumber, pid, err := s.executor.ExecuteExternalBackground(stdout, stderr, fields, redirect, line)
+		jobNumber, pid, err := s.executor.ExecuteExternalBackground(outputs, fields, line)
 		if err != nil {
 			return true, err
 		}
@@ -119,7 +121,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 		return false, nil
 	}
 
-	if err := s.executor.ExecuteExternalForeground(stdout, stderr, fields, redirect); err != nil {
+	if err := s.executor.ExecuteExternalForeground(outputs, fields); err != nil {
 		return true, err
 	}
 	return false, nil
@@ -136,10 +138,13 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 		return false, nil
 	}
 
-	stdout := s.terminal.Stdout()
-	stderr := s.terminal.Stderr()
+	outputs := executor.Outputs{
+		Stdout:   s.terminal.Stdout(),
+		Stderr:   s.terminal.Stderr(),
+		Redirect: redirect,
+	}
 
-	if err := s.executor.ExecutePipeline(stdout, stderr, commands, redirect); err != nil {
+	if err := s.executor.ExecutePipeline(outputs, commands); err != nil {
 		return true, err
 	}
 	return false, nil

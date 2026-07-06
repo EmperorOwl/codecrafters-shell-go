@@ -53,15 +53,21 @@ classDiagram
 
     parser ..> Redirect
 
+    class Outputs {
+        +Stdout io.Writer
+        +Stderr io.Writer
+        +Redirect Redirect
+    }
+
     class Executor {
         -jobTable JobTable
         -completionRegistry CompletionRegistry
         -stdin io.Reader
-        +SetStdin(io.Reader)
-        +ExecuteBuiltin(io.Writer, io.Writer, []string, Redirect) bool, error
-        +ExecuteExternalForeground(io.Writer, io.Writer, []string, Redirect) error
-        +ExecuteExternalBackground(io.Writer, io.Writer, []string, Redirect, string) int, int, error
-        +ExecutePipeline(io.Writer, io.Writer, [][]string, Redirect) error
+        +New(JobTable, CompletionRegistry, io.Reader)
+        +ExecuteBuiltin(Outputs, []string) bool, error
+        +ExecuteExternalForeground(Outputs, []string) error
+        +ExecuteExternalBackground(Outputs, []string, string) int, int, error
+        +ExecutePipeline(Outputs, [][]string) error
     }
 
     class external {
@@ -229,7 +235,7 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
 | Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Shell` passes `terminal.Stdout()` and `terminal.Stderr()` into executor methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin via `SetStdin`, builds `BuiltinContext` on each call, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
+`Shell` passes `executor.Outputs` into execute methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin from `New` for foreground and background external commands, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`.
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 

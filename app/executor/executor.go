@@ -15,46 +15,49 @@ type Executor struct {
 	stdin              io.Reader
 }
 
-// New returns an executor wired to the given shell state.
-func New(jobTable *jobs.JobTable, completionRegistry *completion.CompletionRegistry) *Executor {
+// New returns an executor wired to the given shell state and stdin stream.
+func New(jobTable *jobs.JobTable, completionRegistry *completion.CompletionRegistry, stdin io.Reader) *Executor {
 	return &Executor{
 		jobTable:           jobTable,
 		completionRegistry: completionRegistry,
+		stdin:              stdin,
 	}
 }
 
-// SetStdin configures stdin used for foreground command execution.
-func (e *Executor) SetStdin(stdin io.Reader) {
-	e.stdin = stdin
+// Outputs configures default stdout, stderr, and redirects for command execution.
+type Outputs struct {
+	Stdout   io.Writer
+	Stderr   io.Writer
+	Redirect parser.Redirect
 }
 
 // ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(stdout, stderr io.Writer, fields []string, redirect parser.Redirect) (bool, error) {
+func (e *Executor) ExecuteBuiltin(outputs Outputs, fields []string) (bool, error) {
 	var exitShell bool
-	err := e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
+	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
 		var err error
-		exitShell, err = e.runBuiltin(outputs.Stdout, outputs.Stderr, fields, nil)
+		exitShell, err = e.runBuiltin(resolved.Stdout, resolved.Stderr, fields, nil)
 		return err
 	})
 	return exitShell, err
 }
 
 // ExecuteExternalForeground runs an external command and waits for it to finish.
-func (e *Executor) ExecuteExternalForeground(stdout, stderr io.Writer, fields []string, redirect parser.Redirect) error {
-	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		return nonExitError(e.runExternal(outputs.Stdout, outputs.Stderr, fields, e.stdin))
+func (e *Executor) ExecuteExternalForeground(outputs Outputs, fields []string) error {
+	return e.withOutputs(outputs, func(resolved commandOutputs) error {
+		return nonExitError(e.runExternal(resolved.Stdout, resolved.Stderr, fields, e.stdin))
 	})
 }
 
 // ExecuteExternalBackground starts an external command in the background.
 // It returns the assigned job number and process ID.
-func (e *Executor) ExecuteExternalBackground(stdout, stderr io.Writer, fields []string, redirect parser.Redirect, line string) (int, int, error) {
+func (e *Executor) ExecuteExternalBackground(outputs Outputs, fields []string, line string) (int, int, error) {
 	var jobNumber int
 	var pid int
 
-	err := e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
+	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
 		var err error
-		jobNumber, pid, err = e.runExternalBackground(outputs.Stdout, outputs.Stderr, fields, line)
+		jobNumber, pid, err = e.runExternalBackground(resolved.Stdout, resolved.Stderr, fields, line)
 		return err
 	})
 	if err != nil {
@@ -64,12 +67,12 @@ func (e *Executor) ExecuteExternalBackground(stdout, stderr io.Writer, fields []
 }
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(stdout, stderr io.Writer, segments [][]string, redirect parser.Redirect) error {
+func (e *Executor) ExecutePipeline(outputs Outputs, segments [][]string) error {
 	if len(segments) < 2 {
 		return nil
 	}
 
-	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		return nonExitError(e.runPipeline(segments, outputs.Stdout, outputs.Stderr))
+	return e.withOutputs(outputs, func(resolved commandOutputs) error {
+		return nonExitError(e.runPipeline(segments, resolved.Stdout, resolved.Stderr))
 	})
 }
