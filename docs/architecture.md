@@ -18,7 +18,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 
 | Style | Packages / types | Reason |
 | --- | --- | --- |
-| **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobTable`, `CompletionRegistry`, `ExternalProgram`, `CommandOutputs` | Session state, lifecycle, or dependencies wired at `New()` |
+| **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobTable`, `CompletionRegistry`, `ExternalProgram` | Session state, lifecycle, or dependencies wired at `New()` |
 | **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
 | **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
 
@@ -53,20 +53,17 @@ classDiagram
 
     parser ..> Redirect
 
-    class CommandOutputs {
-        +Stdout io.Writer
-        +Stderr io.Writer
-        +Close()
-    }
-
     class Executor {
         -jobTable JobTable
         -completionRegistry CompletionRegistry
-        +OpenCommandOutputs(io.Writer, io.Writer, Redirect) CommandOutputs, error
-        +ExecuteBuiltin([]string, CommandOutputs) bool, error
-        +ExecuteExternalForeground([]string, CommandOutputs) error
-        +ExecuteExternalBackground([]string, CommandOutputs, string) int, int, error
-        +ExecutePipeline([][]string, CommandOutputs) error
+        -stdin io.Reader
+        -stdout io.Writer
+        -stderr io.Writer
+        +SetIO(io.Reader, io.Writer, io.Writer)
+        +ExecuteBuiltin([]string, Redirect) bool, error
+        +ExecuteExternalForeground([]string, Redirect) error
+        +ExecuteExternalBackground([]string, Redirect, string) int, int, error
+        +ExecutePipeline([][]string, Redirect) error
     }
 
     class external {
@@ -177,7 +174,6 @@ classDiagram
     TabHandler ..> TabResult
 
     Executor ..> Redirect
-    Executor ..> CommandOutputs
     Executor ..> external
     Executor ..> builtins
     Shell --> Terminal : terminal
@@ -203,7 +199,7 @@ Owned by `Shell.Run()`:
 
 1. `writeReapedJobs()` — `jobTable.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
 2. `terminal.ReadLine()`
-3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (using `terminal.Stdout()` / `terminal.Stderr()`)
+3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (redirect open/close handled inside executor)
 4. Repeat until exit or EOF
 
 ## Tab completion
@@ -235,7 +231,7 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
 | Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Executor` builds `BuiltinContext` on each call, wiring `CommandOutputs` writers with injected `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
+`Executor` is wired with default I/O via `SetIO` after the terminal is created. It builds `BuiltinContext` on each call, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 

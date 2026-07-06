@@ -6,9 +6,10 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
+	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-func (e *Executor) builtinContext(outputs CommandOutputs) *builtins.Context {
+func (e *Executor) builtinContext(outputs commandOutputs) *builtins.Context {
 	return &builtins.Context{
 		Stdout:     outputs.Stdout,
 		Stderr:     outputs.Stderr,
@@ -18,36 +19,55 @@ func (e *Executor) builtinContext(outputs CommandOutputs) *builtins.Context {
 }
 
 // ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(fields []string, outputs CommandOutputs) (bool, error) {
-	return builtins.Run(fields[0], fields[1:], e.builtinContext(outputs))
+func (e *Executor) ExecuteBuiltin(fields []string, redirect parser.Redirect) (bool, error) {
+	var exitShell bool
+	err := e.withOutputs(redirect, func(outputs commandOutputs) error {
+		var err error
+		exitShell, err = builtins.Run(fields[0], fields[1:], e.builtinContext(outputs))
+		return err
+	})
+	return exitShell, err
 }
 
 // ExecuteExternalForeground runs an external command and waits for it to finish.
-func (e *Executor) ExecuteExternalForeground(fields []string, outputs CommandOutputs) error {
-	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-	if !ok {
-		return nil
-	}
-	return nonExitError(prog.Run())
+func (e *Executor) ExecuteExternalForeground(fields []string, redirect parser.Redirect) error {
+	return e.withOutputs(redirect, func(outputs commandOutputs) error {
+		prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
+		if !ok {
+			return nil
+		}
+		prog.Stdin = e.stdin
+		return nonExitError(prog.Run())
+	})
 }
 
 // ExecuteExternalBackground starts an external command in the background.
 // It returns the assigned job number and process ID.
-func (e *Executor) ExecuteExternalBackground(fields []string, outputs CommandOutputs, line string) (int, int, error) {
-	prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-	if !ok {
-		return 0, 0, nil
-	}
-
+func (e *Executor) ExecuteExternalBackground(fields []string, redirect parser.Redirect, line string) (int, int, error) {
 	var jobNumber int
-	pid, err := prog.RunInBackground(func() {
-		e.jobTable.MarkDone(jobNumber)
+	var pid int
+
+	err := e.withOutputs(redirect, func(outputs commandOutputs) error {
+		prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
+		if !ok {
+			return nil
+		}
+		prog.Stdin = e.stdin
+
+		var err error
+		pid, err = prog.RunInBackground(func() {
+			e.jobTable.MarkDone(jobNumber)
+		})
+		if err != nil {
+			return err
+		}
+
+		jobNumber = e.jobTable.Add(pid, line)
+		return nil
 	})
 	if err != nil {
 		return 0, 0, err
 	}
-
-	jobNumber = e.jobTable.Add(pid, line)
 	return jobNumber, pid, nil
 }
 

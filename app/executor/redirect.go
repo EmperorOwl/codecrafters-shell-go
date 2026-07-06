@@ -7,34 +7,41 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-// CommandOutputs holds writers for command stdout and stderr, with optional cleanup.
-type CommandOutputs struct {
+// commandOutputs holds writers for command stdout and stderr, with optional cleanup.
+type commandOutputs struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	close  func()
 }
 
-// Close releases redirect file handles when present.
-func (o CommandOutputs) Close() {
+func (o commandOutputs) Close() {
 	if o.close != nil {
 		o.close()
 	}
 }
 
-// OpenCommandOutputs applies redirect paths to the default stdout and stderr writers.
-func (e *Executor) OpenCommandOutputs(stdout, stderr io.Writer, redirect parser.Redirect) (CommandOutputs, error) {
-	out, closeStdout, err := openRedirect(stdout, redirect.StdoutPath, redirect.StdoutAppend)
+func (e *Executor) withOutputs(redirect parser.Redirect, fn func(commandOutputs) error) error {
+	outputs, err := e.openCommandOutputs(redirect)
 	if err != nil {
-		return CommandOutputs{}, err
+		return err
+	}
+	defer outputs.Close()
+	return fn(outputs)
+}
+
+func (e *Executor) openCommandOutputs(redirect parser.Redirect) (commandOutputs, error) {
+	out, closeStdout, err := openRedirect(e.stdout, redirect.StdoutPath, redirect.StdoutAppend)
+	if err != nil {
+		return commandOutputs{}, err
 	}
 
-	errOut, closeStderr, err := openRedirect(stderr, redirect.StderrPath, redirect.StderrAppend)
+	errOut, closeStderr, err := openRedirect(e.stderr, redirect.StderrPath, redirect.StderrAppend)
 	if err != nil {
 		closeStdout()
-		return CommandOutputs{}, err
+		return commandOutputs{}, err
 	}
 
-	return CommandOutputs{
+	return commandOutputs{
 		Stdout: out,
 		Stderr: errOut,
 		close: func() {

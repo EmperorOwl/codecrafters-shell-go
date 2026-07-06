@@ -10,24 +10,26 @@ import (
 )
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(segments [][]string, outputs CommandOutputs) error {
+func (e *Executor) ExecutePipeline(segments [][]string, redirect parser.Redirect) error {
 	if len(segments) < 2 {
 		return nil
 	}
 
-	n := len(segments)
-	readers := make([]io.ReadCloser, n-1)
-	writers := make([]io.WriteCloser, n-1)
-	for i := 0; i < n-1; i++ {
-		readers[i], writers[i] = io.Pipe()
-	}
+	return e.withOutputs(redirect, func(outputs commandOutputs) error {
+		n := len(segments)
+		readers := make([]io.ReadCloser, n-1)
+		writers := make([]io.WriteCloser, n-1)
+		for i := 0; i < n-1; i++ {
+			readers[i], writers[i] = io.Pipe()
+		}
 
-	pipeWriters := make([]io.Writer, n-1)
-	for i := range writers {
-		pipeWriters[i] = writers[i]
-	}
+		pipeWriters := make([]io.Writer, n-1)
+		for i := range writers {
+			pipeWriters[i] = writers[i]
+		}
 
-	return nonExitError(e.runPipelineCommands(segments, outputs.Stdout, outputs.Stderr, pipeWriters, readers, writers))
+		return nonExitError(e.runPipelineCommands(segments, outputs.Stdout, outputs.Stderr, pipeWriters, readers, writers))
+	})
 }
 
 // ParsePipelineSegments parses redirect and background markers from pipeline segments.
