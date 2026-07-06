@@ -7,69 +7,62 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
-	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-func (e *Executor) builtinContext(outputs commandOutputs) *builtins.Context {
-	return &builtins.Context{
-		Stdout:     outputs.Stdout,
-		Stderr:     outputs.Stderr,
+func (e *Executor) runBuiltin(stdout, stderr io.Writer, fields []string, stdin io.Reader) (bool, error) {
+	ctx := &builtins.Context{
+		Stdout:     stdout,
+		Stderr:     stderr,
 		Jobs:       e.jobTable,
 		Completion: e.completionRegistry,
 	}
+	if stdin != nil {
+		return runDrainingStdin(fields[0], fields[1:], ctx, stdin)
+	}
+	return builtins.Run(fields[0], fields[1:], ctx)
 }
 
-// ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(stdout, stderr io.Writer, fields []string, redirect parser.Redirect) (bool, error) {
-	var exitShell bool
-	err := e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		var err error
-		exitShell, err = builtins.Run(fields[0], fields[1:], e.builtinContext(outputs))
-		return err
-	})
-	return exitShell, err
-}
-
-// ExecuteExternalForeground runs an external command and waits for it to finish.
-func (e *Executor) ExecuteExternalForeground(stdout, stderr io.Writer, fields []string, redirect parser.Redirect) error {
-	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-		if !ok {
-			return nil
-		}
-		prog.Stdin = e.stdin
-		return nonExitError(prog.Run())
-	})
-}
-
-// ExecuteExternalBackground starts an external command in the background.
-// It returns the assigned job number and process ID.
-func (e *Executor) ExecuteExternalBackground(stdout, stderr io.Writer, fields []string, redirect parser.Redirect, line string) (int, int, error) {
-	var jobNumber int
-	var pid int
-
-	err := e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		prog, ok := external.New(fields, outputs.Stdout, outputs.Stderr)
-		if !ok {
-			return nil
-		}
-		prog.Stdin = e.stdin
-
-		var err error
-		pid, err = prog.RunInBackground(func() {
-			e.jobTable.MarkDone(jobNumber)
-		})
-		if err != nil {
-			return err
-		}
-
-		jobNumber = e.jobTable.Add(pid, line)
+func (e *Executor) runExternal(stdout, stderr io.Writer, fields []string, stdin io.Reader) error {
+	prog, ok := external.New(fields, stdout, stderr)
+	if !ok {
 		return nil
+	}
+	prog.Stdin = stdin
+	return prog.Run()
+}
+
+func (e *Executor) runExternalBackground(stdout, stderr io.Writer, fields []string, line string) (int, int, error) {
+	prog, ok := external.New(fields, stdout, stderr)
+	if !ok {
+		return 0, 0, nil
+	}
+	prog.Stdin = e.stdin
+
+	var jobNumber int
+	pid, err := prog.RunInBackground(func() {
+		e.jobTable.MarkDone(jobNumber)
 	})
 	if err != nil {
 		return 0, 0, err
 	}
+
+	jobNumber = e.jobTable.Add(pid, line)
 	return jobNumber, pid, nil
+}
+
+// runDrainingStdin runs a builtin while discarding pipeline stdin in the background.
+// Builtins do not read stdin, so a middle pipeline stage would leave the upstream
+// pipe unread and deadlock once the buffer fills. Draining stdin unblocks writers.
+func runDrainingStdin(name string, args []string, ctx *builtins.Context, stdin io.Reader) (bool, error) {
+	drainDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(io.Discard, stdin)
+		close(drainDone)
+	}()
+
+	exitShell, err := builtins.Run(name, args, ctx)
+	<-drainDone
+	return exitShell, err
 }
 
 func nonExitError(err error) error {

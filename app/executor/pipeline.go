@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
-	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
@@ -65,27 +64,13 @@ func (e *Executor) runPipelineCommands(segments [][]string, stdout, stderr io.Wr
 			}
 
 			fields := segments[i]
+			stdin := pipelineStdin(i, fields, readers)
+
 			var err error
 			if builtins.IsBuiltin(fields[0]) {
-				ctx := &builtins.Context{
-					Stdout:     out,
-					Stderr:     stderr,
-					Jobs:       e.jobTable,
-					Completion: e.completionRegistry,
-				}
-				if i > 0 {
-					_, err = runDrainingStdin(fields[0], fields[1:], ctx, readers[i-1])
-				} else {
-					_, err = builtins.Run(fields[0], fields[1:], ctx)
-				}
+				_, err = e.runBuiltin(out, stderr, fields, stdin)
 			} else {
-				prog, _ := external.New(fields, out, stderr)
-				if i > 0 {
-					prog.Stdin = readers[i-1]
-				} else {
-					prog.Stdin = bytes.NewReader(nil)
-				}
-				err = prog.Run()
+				err = e.runExternal(out, stderr, fields, stdin)
 			}
 
 			results <- err
@@ -102,14 +87,12 @@ func (e *Executor) runPipelineCommands(segments [][]string, stdout, stderr io.Wr
 	return lastErr
 }
 
-func runDrainingStdin(name string, args []string, ctx *builtins.Context, stdin io.Reader) (bool, error) {
-	drainDone := make(chan struct{})
-	go func() {
-		_, _ = io.Copy(io.Discard, stdin)
-		close(drainDone)
-	}()
-
-	exitShell, err := builtins.Run(name, args, ctx)
-	<-drainDone
-	return exitShell, err
+func pipelineStdin(stage int, fields []string, readers []io.ReadCloser) io.Reader {
+	if stage > 0 {
+		return readers[stage-1]
+	}
+	if !builtins.IsBuiltin(fields[0]) {
+		return bytes.NewReader(nil)
+	}
+	return nil
 }
