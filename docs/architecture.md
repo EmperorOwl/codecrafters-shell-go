@@ -57,13 +57,11 @@ classDiagram
         -jobTable JobTable
         -completionRegistry CompletionRegistry
         -stdin io.Reader
-        -stdout io.Writer
-        -stderr io.Writer
-        +SetIO(io.Reader, io.Writer, io.Writer)
-        +ExecuteBuiltin([]string, Redirect) bool, error
-        +ExecuteExternalForeground([]string, Redirect) error
-        +ExecuteExternalBackground([]string, Redirect, string) int, int, error
-        +ExecutePipeline([][]string, Redirect) error
+        +SetStdin(io.Reader)
+        +ExecuteBuiltin(io.Writer, io.Writer, []string, Redirect) bool, error
+        +ExecuteExternalForeground(io.Writer, io.Writer, []string, Redirect) error
+        +ExecuteExternalBackground(io.Writer, io.Writer, []string, Redirect, string) int, int, error
+        +ExecutePipeline(io.Writer, io.Writer, [][]string, Redirect) error
     }
 
     class external {
@@ -231,7 +229,7 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
 | Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Executor` is wired with default I/O via `SetIO` after the terminal is created. It builds `BuiltinContext` on each call, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
+`Shell` passes `terminal.Stdout()` and `terminal.Stderr()` into executor methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin via `SetStdin`, builds `BuiltinContext` on each call, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 

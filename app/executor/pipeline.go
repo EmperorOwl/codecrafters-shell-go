@@ -10,12 +10,12 @@ import (
 )
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(segments [][]string, redirect parser.Redirect) error {
+func (e *Executor) ExecutePipeline(stdout, stderr io.Writer, segments [][]string, redirect parser.Redirect) error {
 	if len(segments) < 2 {
 		return nil
 	}
 
-	return e.withOutputs(redirect, func(outputs commandOutputs) error {
+	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
 		n := len(segments)
 		readers := make([]io.ReadCloser, n-1)
 		writers := make([]io.WriteCloser, n-1)

@@ -33,7 +33,7 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 		completionRegistry: completionRegistry,
 	}
 	s.terminal = terminal.New(s, stdin, stdout, stderr)
-	ex.SetIO(stdin, s.terminal.Stdout(), s.terminal.Stderr())
+	ex.SetStdin(stdin)
 	return s
 }
 
@@ -97,8 +97,11 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 		return false, nil
 	}
 
+	stdout := s.terminal.Stdout()
+	stderr := s.terminal.Stderr()
+
 	if builtins.IsBuiltin(fields[0]) {
-		exitShell, err := s.executor.ExecuteBuiltin(fields, redirect)
+		exitShell, err := s.executor.ExecuteBuiltin(stdout, stderr, fields, redirect)
 		if exitShell {
 			return true, nil
 		}
@@ -106,7 +109,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	}
 
 	if background {
-		jobNumber, pid, err := s.executor.ExecuteExternalBackground(fields, redirect, line)
+		jobNumber, pid, err := s.executor.ExecuteExternalBackground(stdout, stderr, fields, redirect, line)
 		if err != nil {
 			return true, err
 		}
@@ -116,7 +119,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 		return false, nil
 	}
 
-	if err := s.executor.ExecuteExternalForeground(fields, redirect); err != nil {
+	if err := s.executor.ExecuteExternalForeground(stdout, stderr, fields, redirect); err != nil {
 		return true, err
 	}
 	return false, nil
@@ -133,7 +136,10 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 		return false, nil
 	}
 
-	if err := s.executor.ExecutePipeline(commands, redirect); err != nil {
+	stdout := s.terminal.Stdout()
+	stderr := s.terminal.Stderr()
+
+	if err := s.executor.ExecutePipeline(stdout, stderr, commands, redirect); err != nil {
 		return true, err
 	}
 	return false, nil

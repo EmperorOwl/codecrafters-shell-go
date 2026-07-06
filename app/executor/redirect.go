@@ -20,8 +20,8 @@ func (o commandOutputs) Close() {
 	}
 }
 
-func (e *Executor) withOutputs(redirect parser.Redirect, fn func(commandOutputs) error) error {
-	outputs, err := e.openCommandOutputs(redirect)
+func (e *Executor) withOutputs(stdout, stderr io.Writer, redirect parser.Redirect, fn func(commandOutputs) error) error {
+	outputs, err := openCommandOutputs(stdout, stderr, redirect)
 	if err != nil {
 		return err
 	}
@@ -29,13 +29,13 @@ func (e *Executor) withOutputs(redirect parser.Redirect, fn func(commandOutputs)
 	return fn(outputs)
 }
 
-func (e *Executor) openCommandOutputs(redirect parser.Redirect) (commandOutputs, error) {
-	out, closeStdout, err := openRedirect(e.stdout, redirect.StdoutPath, redirect.StdoutAppend)
+func openCommandOutputs(stdout, stderr io.Writer, redirect parser.Redirect) (commandOutputs, error) {
+	out, closeStdout, err := openRedirect(stdout, redirect.StdoutPath, redirect.StdoutAppend)
 	if err != nil {
 		return commandOutputs{}, err
 	}
 
-	errOut, closeStderr, err := openRedirect(e.stderr, redirect.StderrPath, redirect.StderrAppend)
+	errOut, closeStderr, err := openRedirect(stderr, redirect.StderrPath, redirect.StderrAppend)
 	if err != nil {
 		closeStdout()
 		return commandOutputs{}, err
