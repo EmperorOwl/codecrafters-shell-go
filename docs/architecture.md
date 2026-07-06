@@ -2,25 +2,19 @@
 
 Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 
-| Package | Responsibilities |
-| --- | --- |
-| `shell` | Top-level orchestrator: owns the REPL loop (`shell.go`), tab completion (`tab.go`), terminal, executor, job state, and completion registry. |
-| `terminal` | Handles user I/O: prompt, line editing, raw mode, Tab key handling, and command output writers. |
-| `parser` | Tokenizes and parses input into commands, arguments, pipelines, and redirects. |
-| `executor` | Opens redirect outputs and runs commands: builtins, external programs, and pipelines. |
-| `jobs` | Tracks background jobs: add, mark done, reap, and list. |
-| `completion` | Tab match logic (`Complete`), programmable completion registry (`CompletionRegistry`), and completer script execution (`RunCompleter`). |
-| `builtins` | Builtin command implementations and dispatch (`echo`, `cd`, `exit`, `type`, `jobs`, `complete`, `pwd`). |
-| `external` | PATH lookup and running external programs (`ExternalProgram`). |
-| `files` | Directory listing for file tab completion. |
 
-## API style
+| Package      | Responsibilities                                                                                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shell`      | Top-level orchestrator: REPL loop (`shell.go`), tab completion (`tab.go`), command routing, and `builtins.State` ownership.                   |
+| `terminal`   | User I/O: prompt, raw-mode line editing, Tab key dispatch, and LF→CRLF wrapping for command output.                                           |
+| `parser`     | Tokenizes and parses input into commands, arguments, pipelines, and redirects.                                                                |
+| `executor`   | Redirect lifecycle and command execution: builtins, external programs, and pipelines (`executor.go`, `run.go`, `pipeline.go`, `redirect.go`). |
+| `jobs`       | Tracks background jobs: add, mark done, reap, and list.                                                                                       |
+| `completion` | Tab match logic (`Complete`), programmable completion registry (`CompletionRegistry`), and completer script execution (`RunCompleter`).       |
+| `builtins`   | Builtin implementations, dispatch (`Run`, `IsBuiltin`, `Names`), and session types (`State`, `Context`).                                      |
+| `external`   | PATH lookup and running external programs (`ExternalProgram`).                                                                                |
+| `files`      | Directory listing for file tab completion.                                                                                                    |
 
-| Style | Packages / types | Reason |
-| --- | --- | --- |
-| **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobTable`, `CompletionRegistry`, `ExternalProgram` | Session state, lifecycle, or dependencies wired at `New()` |
-| **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
-| **Types only** | `Redirect`, `Job`, `State`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
 
 ## Class diagram
 
@@ -65,6 +59,7 @@ classDiagram
         +ExecuteExternalForeground(Outputs, []string) error
         +ExecuteExternalBackground(Outputs, []string, func()) int, error
         +ExecutePipeline(Outputs, State, [][]string) error
+        +ParsePipelineSegments([][]string) [][]string, Redirect
     }
 
     class external {
@@ -85,7 +80,7 @@ classDiagram
         <<package>>
         +IsBuiltin(string) bool
         +Names() []string
-        +Run(string, []string, BuiltinContext) bool, error
+        +Run(string, []string, Context) bool, error
     }
 
     class State {
@@ -93,14 +88,14 @@ classDiagram
         +Completion CompletionRegistry
     }
 
-    class BuiltinContext {
+    class Context {
         +Stdout io.Writer
         +Stderr io.Writer
         +State State
     }
 
     builtins ..> State
-    builtins ..> BuiltinContext
+    builtins ..> Context
 
     class Job {
         +Number int
@@ -174,11 +169,14 @@ classDiagram
         +WriteLine(string)
         +Stdout() io.Writer
         +Stderr() io.Writer
+        +PrepareRead() bool
+        +Close() error
     }
 
     TabHandler ..> TabState
     TabHandler ..> TabResult
 
+    Executor ..> Outputs
     Executor ..> Redirect
     Executor ..> external
     Executor ..> builtins
@@ -193,17 +191,20 @@ classDiagram
     Shell ..> builtins
     Shell ..> jobs
     Terminal --> TabHandler : tabHandler
-    Executor ..> BuiltinContext : builds per call
+    Executor ..> Context : builds per call
 ```
+
+
 
 ## REPL loop
 
 Owned by `Shell.Run()`:
 
-1. `writeReapedJobs()` — `state.Jobs.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
-2. `terminal.ReadLine()`
-3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (redirect open/close handled inside executor)
-4. Repeat until exit or EOF
+1. `terminal.PrepareRead()` — re-enable raw mode (external programs may restore cooked mode)
+2. `writeReapedJobs()` — `state.Jobs.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
+3. `terminal.ReadLine()`
+4. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor`
+5. Repeat until exit or EOF
 
 ## Tab completion
 
@@ -212,29 +213,57 @@ Owned by `shell/tab.go`.
 1. User presses Tab during `terminal.ReadLine()`
 2. `terminal` calls `tabHandler.HandleTab(state, buffer)` — implemented by `Shell`
 3. `Shell.completeBuffer` routes to command, programmable, or filename completion:
-   - **Commands:** deduplicated `builtins.Names` + PATH (`commandCandidates`)
-   - **Programmable:** `buildCompleterOptions` → `state.Completion.Lookup` → `completion.RunCompleter`
-   - **Files:** `files.ListInDir` for the current argument
+  - **Commands:** deduplicated `builtins.Names` + PATH (`commandCandidates`)
+  - **Programmable:** `buildCompleterOptions` → `state.Completion.Lookup` → `completion.RunCompleter`
+  - **Files:** `files.ListInDir` for the current argument
 4. `Shell` calls `completion.Complete` on the gathered candidates
 5. `Shell` applies double-Tab logic (bell on first Tab, listings on second) and returns `TabResult`
 6. `terminal` updates the buffer or shows match listings
 
-The `complete` builtin registers and unregisters scripts via `CompletionRegistry`.
+The `complete` builtin registers and unregisters scripts via `state.Completion`.
+
+## Terminal I/O
+
+- **Raw mode** (`terminal/raw.go`): byte-at-a-time input so Tab, Backspace, and completion listings work. Falls back to line-based reads when stdin is not a TTY (tests).
+- **Command writers** (`terminal.Stdout()` / `Stderr()`): called at execution time, not cached. When raw mode is active, `WrapWriter` translates `\n` → `\r\n` so each line starts at column 0 (raw mode only moves down on `\n`).
+- **Input**: `bufio.Reader` on stdin for `ReadLine`; `Session` holds the `*os.File` for `MakeRaw` / `Restore`.
+
+## Executor
+
+Public API lives in `executor.go`. Private stage runners live in `run.go`; pipeline wiring in `pipeline.go`; redirect open/close in `redirect.go`.
+
+
+| Method                      | Role                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `ExecuteBuiltin`            | `withOutputs` → `runBuiltin` → `builtins.Run`                                 |
+| `ExecuteExternalForeground` | `withOutputs` → `runExternal` (stdin from executor)                           |
+| `ExecuteExternalBackground` | `withOutputs` → `runExternalBackground`; returns PID only                     |
+| `ExecutePipeline`           | `withOutputs` → `runPipeline` (goroutine per stage, `io.Pipe` between stages) |
+
+
+`Shell` builds `executor.Outputs` on each command/pipeline from `terminal.Stdout()`, `terminal.Stderr()`, and the parsed redirect. `builtins.State` is passed per call for builtins and pipeline stages that need jobs/completion.
+
+Shared private runners in `run.go`:
+
+- `runBuiltin` — builds `builtins.Context`; drains pipe stdin for middle pipeline builtins via `runDrainingStdin`
+- `runExternal` — `external.New` + `Run`
+- `runExternalBackground` — `RunInBackground` with caller-supplied `onExit` callback
 
 ## Builtin commands
 
 `builtins` package holds implementations and a fixed handler table (package-level `IsBuiltin`, `Names`, `Run`).
 
-| Concern | Owner |
-| --- | --- |
-| Builtin implementations (`echo`, `cd`, …) | `builtins` package |
-| Dispatch (`Run`, `IsBuiltin`, `Names`) | `builtins` package functions |
-| Per-invocation I/O and shell state | `BuiltinContext` with `State` |
-| Invoking builtins (single command or pipeline stage) | `Executor.ExecuteBuiltin` → `builtins.Run` |
-| Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
-| Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Shell` owns `builtins.State` (jobs and completion registry) and passes `executor.Outputs` plus `State` into execute methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin from `New`, starts processes, and builds `BuiltinContext` per builtin call. Background job registration (`Add`, `MarkDone`, `[n] pid` output) is handled by `Shell`.
+| Concern                                              | Owner                                                                            |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Builtin implementations (`echo`, `cd`, …)            | `builtins` package                                                               |
+| Dispatch (`Run`, `IsBuiltin`, `Names`)               | `builtins` package functions                                                     |
+| Stable session state (jobs, completion registry)     | `builtins.State`, owned by `Shell`                                               |
+| Per-invocation I/O and state refs                    | `builtins.Context` (`Stdout`, `Stderr`, `State`)                                 |
+| Invoking builtins (single command or pipeline stage) | `Executor.ExecuteBuiltin` / `runBuiltin` → `builtins.Run`                        |
+| Routing builtin vs external                          | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
+| Builtin names for tab completion                     | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH)                 |
+
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 
@@ -243,7 +272,7 @@ Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with 
 `Shell.ExecuteLine` resolves the command before calling executor:
 
 - `builtins.IsBuiltin` → `ExecuteBuiltin`
-- `external.FindExecutableInPath` → foreground or background external execution
+- `external.FindExecutableInPath` → foreground via `ExecuteExternalForeground`, or background via `executeBackgroundCommand`
 - Neither → `terminal.WriteLine` with command-not-found message
 
-Background job startup (`[n] pid`) is printed by `Shell` after `ExecuteExternalBackground` returns a PID and `JobTable.Add` assigns a job number.
+Background jobs: `executeBackgroundCommand` starts the process via `ExecuteExternalBackground`, registers the job in `state.Jobs` (`Add`, `MarkDone` callback), and prints `[n] pid`.
