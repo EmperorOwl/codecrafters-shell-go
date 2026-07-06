@@ -62,3 +62,14 @@ func (e *Executor) ExecuteExternalBackground(stdout, stderr io.Writer, fields []
 	}
 	return jobNumber, pid, nil
 }
+
+// ExecutePipeline runs a pipeline of commands connected by pipes.
+func (e *Executor) ExecutePipeline(stdout, stderr io.Writer, segments [][]string, redirect parser.Redirect) error {
+	if len(segments) < 2 {
+		return nil
+	}
+
+	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
+		return nonExitError(e.runPipeline(segments, outputs.Stdout, outputs.Stderr))
+	})
+}

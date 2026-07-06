@@ -8,29 +8,6 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
-// ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(stdout, stderr io.Writer, segments [][]string, redirect parser.Redirect) error {
-	if len(segments) < 2 {
-		return nil
-	}
-
-	return e.withOutputs(stdout, stderr, redirect, func(outputs commandOutputs) error {
-		n := len(segments)
-		readers := make([]io.ReadCloser, n-1)
-		writers := make([]io.WriteCloser, n-1)
-		for i := 0; i < n-1; i++ {
-			readers[i], writers[i] = io.Pipe()
-		}
-
-		pipeWriters := make([]io.Writer, n-1)
-		for i := range writers {
-			pipeWriters[i] = writers[i]
-		}
-
-		return nonExitError(e.runPipelineCommands(segments, outputs.Stdout, outputs.Stderr, pipeWriters, readers, writers))
-	})
-}
-
 // ParsePipelineSegments parses redirect and background markers from pipeline segments.
 func ParsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
 	commands := make([][]string, len(segments))
@@ -46,15 +23,21 @@ func ParsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
 	return commands, redirect
 }
 
-func (e *Executor) runPipelineCommands(segments [][]string, stdout, stderr io.Writer, writers []io.Writer, readers []io.ReadCloser, pipeWriters []io.WriteCloser) error {
+func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer) error {
 	n := len(segments)
+	readers := make([]io.ReadCloser, n-1)
+	writers := make([]io.WriteCloser, n-1)
+	for i := 0; i < n-1; i++ {
+		readers[i], writers[i] = io.Pipe()
+	}
+
 	results := make(chan error, n)
 	for i := 0; i < n; i++ {
 		i := i
 		go func() {
 			defer func() {
 				if i < n-1 {
-					_ = pipeWriters[i].Close()
+					_ = writers[i].Close()
 				}
 			}()
 
