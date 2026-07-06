@@ -61,7 +61,7 @@ func TestRun(t *testing.T) {
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
-			ctx:         &Context{Jobs: &jobs.JobManager{}},
+			ctx:         &Context{Jobs: &jobs.JobTable{}},
 		},
 	}
 

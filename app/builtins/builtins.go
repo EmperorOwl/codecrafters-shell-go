@@ -13,7 +13,7 @@ type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	Jobs       *jobs.JobManager
+	Jobs       *jobs.JobTable
 	Completion *completion.CompletionRegistry
 }
 

@@ -12,7 +12,7 @@ func (e *Executor) builtinContext(outputs CommandOutputs) *builtins.Context {
 	return &builtins.Context{
 		Stdout:     outputs.Stdout,
 		Stderr:     outputs.Stderr,
-		Jobs:       e.jobManager,
+		Jobs:       e.jobTable,
 		Completion: e.completionRegistry,
 	}
 }
@@ -41,13 +41,13 @@ func (e *Executor) ExecuteExternalBackground(fields []string, outputs CommandOut
 
 	var jobNumber int
 	pid, err := prog.RunInBackground(func() {
-		e.jobManager.MarkDone(jobNumber)
+		e.jobTable.MarkDone(jobNumber)
 	})
 	if err != nil {
 		return 0, 0, err
 	}
 
-	jobNumber = e.jobManager.Add(pid, line)
+	jobNumber = e.jobTable.Add(pid, line)
 	return jobNumber, pid, nil
 }
 

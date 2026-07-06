@@ -9,10 +9,10 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestJobManagerAdd(t *testing.T) {
+func TestJobTableAdd(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(*JobManager)
+		setup      func(*JobTable)
 		pid        int
 		command    string
 		wantNumber int
@@ -20,7 +20,7 @@ func TestJobManagerAdd(t *testing.T) {
 	}{
 		{
 			name:       "first job gets number 1",
-			setup:      func(*JobManager) {},
+			setup:      func(*JobTable) {},
 			pid:        42,
 			command:    "sleep 10 &",
 			wantNumber: 1,
@@ -33,7 +33,7 @@ func TestJobManagerAdd(t *testing.T) {
 		},
 		{
 			name: "second job increments number",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(42, "sleep 10 &")
 			},
 			pid:        99,
@@ -46,7 +46,7 @@ func TestJobManagerAdd(t *testing.T) {
 		},
 		{
 			name: "reuses 1 after table is empty",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(1, "sleep 1 &")
 				t.Add(2, "sleep 2 &")
 				t.MarkDone(1)
@@ -65,7 +65,7 @@ func TestJobManagerAdd(t *testing.T) {
 		},
 		{
 			name: "reuses 2 when job 1 is still running",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(1, "sleep 100 &")
 				t.Add(2, "sleep 1 &")
 				t.MarkDone(2)
@@ -83,7 +83,7 @@ func TestJobManagerAdd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table JobManager
+			var table JobTable
 			tt.setup(&table)
 
 			got := table.Add(tt.pid, tt.command)
@@ -100,16 +100,16 @@ func TestJobManagerAdd(t *testing.T) {
 	}
 }
 
-func TestJobManagerMarkDone(t *testing.T) {
+func TestJobTableMarkDone(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*JobManager)
+		setup     func(*JobTable)
 		jobNumber int
 		wantJobs  []Job
 	}{
 		{
 			name: "marks job done and strips background suffix",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(42, "sleep 1 &")
 			},
 			jobNumber: 1,
@@ -124,7 +124,7 @@ func TestJobManagerMarkDone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table JobManager
+			var table JobTable
 			tt.setup(&table)
 
 			table.MarkDone(tt.jobNumber)
@@ -138,16 +138,16 @@ func TestJobManagerMarkDone(t *testing.T) {
 	}
 }
 
-func TestJobManagerReapDone(t *testing.T) {
+func TestJobTableReapDone(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(*JobManager)
+		setup         func(*JobTable)
 		wantDone      []Job
 		wantRemaining []Job
 	}{
 		{
 			name: "returns no done jobs",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(1, "sleep 10 &")
 			},
 			wantRemaining: []Job{{
@@ -159,7 +159,7 @@ func TestJobManagerReapDone(t *testing.T) {
 		},
 		{
 			name: "returns done jobs and removes them",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(1, "cat /path/to/fifo &")
 				t.MarkDone(1)
 			},
@@ -172,7 +172,7 @@ func TestJobManagerReapDone(t *testing.T) {
 		},
 		{
 			name: "only reaps done jobs",
-			setup: func(t *JobManager) {
+			setup: func(t *JobTable) {
 				t.Add(1, "sleep 500 &")
 				t.Add(2, "cat /path/to/fifo &")
 				t.MarkDone(2)
@@ -194,7 +194,7 @@ func TestJobManagerReapDone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table JobManager
+			var table JobTable
 			tt.setup(&table)
 
 			done := table.ReapDone()

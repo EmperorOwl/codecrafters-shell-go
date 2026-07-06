@@ -7,7 +7,7 @@ import (
 )
 
 // Jobs prints all jobs in the table, then reaps finished ones.
-func Jobs(out io.Writer, table *jobs.JobManager) {
+func Jobs(out io.Writer, table *jobs.JobTable) {
 	display := table.List()
 	table.ReapDone()
 	jobs.WriteAll(out, display)

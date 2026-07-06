@@ -13,17 +13,17 @@ import (
 func TestJobs(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func(*jobs.JobManager)
+		setup         func(*jobs.JobTable)
 		wantLines     []string
 		wantRemaining []jobs.Job
 	}{
 		{
 			name:  "no jobs",
-			setup: func(*jobs.JobManager) {},
+			setup: func(*jobs.JobTable) {},
 		},
 		{
 			name: "one running job",
-			setup: func(t *jobs.JobManager) {
+			setup: func(t *jobs.JobTable) {
 				t.Add(1, "sleep 10 &")
 			},
 			wantLines: []string{
@@ -38,7 +38,7 @@ func TestJobs(t *testing.T) {
 		},
 		{
 			name: "done job is reaped",
-			setup: func(t *jobs.JobManager) {
+			setup: func(t *jobs.JobTable) {
 				t.Add(1, "cat /path/to/fifo &")
 				t.MarkDone(1)
 			},
@@ -50,7 +50,7 @@ func TestJobs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table jobs.JobManager
+			var table jobs.JobTable
 			tt.setup(&table)
 
 			var out bytes.Buffer

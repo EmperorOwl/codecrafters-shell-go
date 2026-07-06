@@ -18,7 +18,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 
 | Style | Packages / types | Reason |
 | --- | --- | --- |
-| **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobManager`, `CompletionRegistry`, `ExternalProgram`, `CommandOutputs` | Session state, lifecycle, or dependencies wired at `New()` |
+| **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobTable`, `CompletionRegistry`, `ExternalProgram`, `CommandOutputs` | Session state, lifecycle, or dependencies wired at `New()` |
 | **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
 | **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
 
@@ -29,7 +29,7 @@ classDiagram
     class Shell {
         -terminal Terminal
         -executor Executor
-        -jobManager JobManager
+        -jobTable JobTable
         -completionRegistry CompletionRegistry
         +Run() error
         +ExecuteLine(string) bool, error
@@ -60,7 +60,7 @@ classDiagram
     }
 
     class Executor {
-        -jobManager JobManager
+        -jobTable JobTable
         -completionRegistry CompletionRegistry
         +OpenCommandOutputs(io.Writer, io.Writer, Redirect) CommandOutputs, error
         +ExecuteBuiltin([]string, CommandOutputs) bool, error
@@ -93,7 +93,7 @@ classDiagram
     class BuiltinContext {
         +Stdout io.Writer
         +Stderr io.Writer
-        +Jobs JobManager
+        +Jobs JobTable
         +Completion CompletionRegistry
     }
 
@@ -106,7 +106,7 @@ classDiagram
         +Status string
     }
 
-    class JobManager {
+    class JobTable {
         +Add(int, string) int
         +MarkDone(int)
         +ReapDone() []Job
@@ -118,7 +118,7 @@ classDiagram
         +FormatLines([]Job) []string
     }
 
-    JobManager ..> Job
+    JobTable ..> Job
     jobs ..> Job
 
     class completion {
@@ -182,7 +182,7 @@ classDiagram
     Executor ..> builtins
     Shell --> Terminal : terminal
     Shell --> Executor : executor
-    Shell --> JobManager : jobManager
+    Shell --> JobTable : jobTable
     Shell --> CompletionRegistry : completionRegistry
     Shell ..|> TabHandler : implements
     Shell ..> parser
@@ -192,7 +192,7 @@ classDiagram
     Shell ..> builtins
     Shell ..> jobs
     Terminal --> TabHandler : tabHandler
-    Executor --> JobManager : jobManager
+    Executor --> JobTable : jobTable
     Executor --> CompletionRegistry : completionRegistry
     Executor ..> BuiltinContext : builds per call
 ```
@@ -201,7 +201,7 @@ classDiagram
 
 Owned by `Shell.Run()`:
 
-1. `writeReapedJobs()` — `jobManager.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
+1. `writeReapedJobs()` — `jobTable.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
 2. `terminal.ReadLine()`
 3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (using `terminal.Stdout()` / `terminal.Stderr()`)
 4. Repeat until exit or EOF
@@ -235,7 +235,7 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
 | Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Executor` builds `BuiltinContext` on each call, wiring `CommandOutputs` writers with injected `JobManager` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
+`Executor` builds `BuiltinContext` on each call, wiring `CommandOutputs` writers with injected `JobTable` and `CompletionRegistry`. The `exit` builtin returns `true` from `Run`; `Executor` propagates that to `Shell.Run` to stop the REPL.
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 

@@ -37,24 +37,24 @@ func TestCommandNotFoundMessage(t *testing.T) {
 func TestWriteReapedJobs(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*jobs.JobManager)
+		setup     func(*jobs.JobTable)
 		wantLines []string
 	}{
 		{
 			name:      "no done jobs",
-			setup:     func(*jobs.JobManager) {},
+			setup:     func(*jobs.JobTable) {},
 			wantLines: nil,
 		},
 		{
 			name: "running job produces no output",
-			setup: func(jm *jobs.JobManager) {
+			setup: func(jm *jobs.JobTable) {
 				jm.Add(1, "sleep 10 &")
 			},
 			wantLines: nil,
 		},
 		{
 			name: "prints one done job",
-			setup: func(jm *jobs.JobManager) {
+			setup: func(jm *jobs.JobTable) {
 				jm.Add(1, "cat /path/to/fifo &")
 				jm.MarkDone(1)
 			},
@@ -68,7 +68,7 @@ func TestWriteReapedJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			s := New(strings.NewReader(""), &out, io.Discard)
-			tt.setup(s.jobManager)
+			tt.setup(s.jobTable)
 
 			s.writeReapedJobs()
 
@@ -77,7 +77,7 @@ func TestWriteReapedJobs(t *testing.T) {
 				t.Errorf("writeReapedJobs() output mismatch (-want +got):\n%s", diff)
 			}
 
-			if done := s.jobManager.ReapDone(); len(done) != 0 {
+			if done := s.jobTable.ReapDone(); len(done) != 0 {
 				t.Errorf("writeReapedJobs() left %d done jobs in table", len(done))
 			}
 		})

@@ -7,14 +7,14 @@ import (
 
 // Executor runs parsed commands using injected shell state.
 type Executor struct {
-	jobManager         *jobs.JobManager
+	jobTable         *jobs.JobTable
 	completionRegistry *completion.CompletionRegistry
 }
 
 // New returns an executor wired to the given shell state.
-func New(jobManager *jobs.JobManager, completionRegistry *completion.CompletionRegistry) *Executor {
+func New(jobTable *jobs.JobTable, completionRegistry *completion.CompletionRegistry) *Executor {
 	return &Executor{
-		jobManager:         jobManager,
+		jobTable:         jobTable,
 		completionRegistry: completionRegistry,
 	}
 }

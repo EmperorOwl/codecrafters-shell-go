@@ -68,7 +68,7 @@ func (e *Executor) runPipelineCommands(segments [][]string, stdout, stderr io.Wr
 				ctx := &builtins.Context{
 					Stdout:     out,
 					Stderr:     stderr,
-					Jobs:       e.jobManager,
+					Jobs:       e.jobTable,
 					Completion: e.completionRegistry,
 				}
 				if i > 0 {

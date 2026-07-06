@@ -17,19 +17,19 @@ import (
 type Shell struct {
 	terminal           *terminal.Terminal
 	executor           *executor.Executor
-	jobManager         *jobs.JobManager
+	jobTable         *jobs.JobTable
 	completionRegistry *completion.CompletionRegistry
 }
 
 // New wires shell dependencies and returns a ready-to-run shell.
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
-	jobManager := &jobs.JobManager{}
+	jobTable := &jobs.JobTable{}
 	completionRegistry := completion.NewCompletionRegistry()
-	ex := executor.New(jobManager, completionRegistry)
+	ex := executor.New(jobTable, completionRegistry)
 
 	s := &Shell{
 		executor:           ex,
-		jobManager:         jobManager,
+		jobTable:         jobTable,
 		completionRegistry: completionRegistry,
 	}
 	s.terminal = terminal.New(s, stdin, stdout, stderr)
@@ -152,7 +152,7 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 
 // writeReapedJobs prints any finished background jobs before the next prompt.
 func (s *Shell) writeReapedJobs() {
-	for _, line := range jobs.FormatLines(s.jobManager.ReapDone()) {
+	for _, line := range jobs.FormatLines(s.jobTable.ReapDone()) {
 		s.terminal.WriteLine(line)
 	}
 }
