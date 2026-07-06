@@ -7,9 +7,10 @@ import (
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
+	"github.com/codecrafters-io/shell-starter-go/app/repl"
 )
 
-func (e *Executor) runBuiltin(stdout, stderr io.Writer, state *builtins.State, fields []string, stdin io.Reader) (bool, error) {
+func (e *Executor) runBuiltin(stdout, stderr io.Writer, state *repl.State, fields []string, stdin io.Reader) (bool, error) {
 	ctx := &builtins.Context{
 		Stdout: stdout,
 		Stderr: stderr,

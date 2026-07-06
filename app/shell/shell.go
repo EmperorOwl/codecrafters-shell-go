@@ -5,31 +5,31 @@ import (
 	"io"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
-	"github.com/codecrafters-io/shell-starter-go/app/completion"
+	"github.com/codecrafters-io/shell-starter-go/app/completer"
 	"github.com/codecrafters-io/shell-starter-go/app/executor"
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	"github.com/codecrafters-io/shell-starter-go/app/repl"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 )
 
 // Shell is the top-level orchestrator for the interactive shell.
 type Shell struct {
-	terminal *terminal.Terminal
-	executor *executor.Executor
-	state    *builtins.State
+	terminal  *terminal.Terminal
+	executor  *executor.Executor
+	completer *completer.Completer
+	state     *repl.State
 }
 
 // New wires shell dependencies and returns a ready-to-run shell.
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
-	state := &builtins.State{
-		Jobs:       &jobs.JobTable{},
-		Completion: completion.NewCompletionRegistry(),
-	}
+	state := repl.NewState()
 
 	s := &Shell{
-		executor: executor.New(stdin),
-		state:    state,
+		executor:  executor.New(stdin),
+		completer: completer.New(state),
+		state:     state,
 	}
 	s.terminal = terminal.New(s, stdin, stdout, stderr)
 	return s
@@ -75,16 +75,15 @@ func (s *Shell) Run() error {
 
 // ExecuteLine parses and runs a single input line.
 func (s *Shell) ExecuteLine(line string) (bool, error) {
-	tokens := parser.Tokenize(line)
-	if segments := parser.SplitPipelineTokens(tokens); len(segments) >= 2 {
-		return s.executePipeline(segments)
+	parsed := parser.ParseLine(line)
+	if parsed.Pipeline {
+		return s.executePipeline(parsed)
 	}
-	return s.executeCommand(tokens, line)
+	return s.executeCommand(parsed, line)
 }
 
-func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
-	fields, redirect := parser.ParseRedirect(tokens)
-	fields, background := parser.StripBackground(fields)
+func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
+	fields := parsed.Commands[0]
 	if len(fields) == 0 {
 		return false, nil
 	}
@@ -98,7 +97,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	outputs := executor.Outputs{
 		Stdout:   s.terminal.Stdout(),
 		Stderr:   s.terminal.Stderr(),
-		Redirect: redirect,
+		Redirect: parsed.Redirect,
 	}
 
 	if builtins.IsBuiltin(fields[0]) {
@@ -109,7 +108,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 		return err != nil, err
 	}
 
-	if background {
+	if parsed.Background {
 		return s.executeBackgroundCommand(outputs, fields, line)
 	}
 
@@ -134,10 +133,8 @@ func (s *Shell) executeBackgroundCommand(outputs executor.Outputs, fields []stri
 	return false, nil
 }
 
-func (s *Shell) executePipeline(segments [][]string) (bool, error) {
-	commands, redirect := executor.ParsePipelineSegments(segments)
-
-	notFound, ok := validatePipelineSegments(commands)
+func (s *Shell) executePipeline(parsed parser.Line) (bool, error) {
+	notFound, ok := validatePipelineSegments(parsed.Commands)
 	if !ok {
 		if notFound != "" {
 			s.terminal.WriteLine(CommandNotFoundMessage(notFound))
@@ -148,13 +145,18 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 	outputs := executor.Outputs{
 		Stdout:   s.terminal.Stdout(),
 		Stderr:   s.terminal.Stderr(),
-		Redirect: redirect,
+		Redirect: parsed.Redirect,
 	}
 
-	if err := s.executor.ExecutePipeline(outputs, s.state, commands); err != nil {
+	if err := s.executor.ExecutePipeline(outputs, s.state, parsed.Commands); err != nil {
 		return true, err
 	}
 	return false, nil
+}
+
+// HandleTab is the TabHandler entry point called by terminal on each Tab press.
+func (s *Shell) HandleTab(state *terminal.TabState, buffer string) terminal.TabResult {
+	return s.completer.HandleTab(state, buffer)
 }
 
 // writeReapedJobs prints any finished background jobs before the next prompt.
@@ -168,13 +170,14 @@ func commandFound(fields []string) (notFound string, ok bool) {
 	if len(fields) == 0 {
 		return "", false
 	}
-	if builtins.IsBuiltin(fields[0]) {
+	name := fields[0]
+	if builtins.IsBuiltin(name) {
 		return "", true
 	}
-	if _, found := external.FindExecutableInPath(fields[0]); found {
+	if _, found := external.FindExecutableInPath(name); found {
 		return "", true
 	}
-	return fields[0], false
+	return name, false
 }
 
 func validatePipelineSegments(segments [][]string) (notFound string, ok bool) {

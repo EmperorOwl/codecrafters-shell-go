@@ -35,6 +35,10 @@ func Cd(stderr io.Writer, directory string) {
 	}
 }
 
+func init() {
+	register("cd", cdBuiltin)
+}
+
 func cdBuiltin(ctx *Context, args []string) (bool, error) {
 	directory := ""
 	if len(args) > 0 {

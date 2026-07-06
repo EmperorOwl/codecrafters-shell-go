@@ -13,6 +13,10 @@ func Jobs(out io.Writer, table *jobs.JobTable) {
 	jobs.WriteAll(out, display)
 }
 
+func init() {
+	register("jobs", jobsBuiltin)
+}
+
 func jobsBuiltin(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil

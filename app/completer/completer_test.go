@@ -1,11 +1,11 @@
-package shell
+package completer
 
 import (
-	"io"
-	"strings"
 	"testing"
 
+	_ "github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
+	"github.com/codecrafters-io/shell-starter-go/app/repl"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -54,9 +54,9 @@ func TestApplyTabAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			state := terminal.TabState{PendingListings: tt.pendingListings}
-			got := applyTabAction(&state, tt.buffer, tt.newBuffer, tt.listings)
+			got := ApplyTabAction(&state, tt.buffer, tt.newBuffer, tt.listings)
 			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("applyTabAction() mismatch (-want +got):\n%s", diff)
+				t.Errorf("ApplyTabAction() mismatch (-want +got):\n%s", diff)
 			}
 			if diff := cmp.Diff(tt.wantPending, state.PendingListings, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("pending listings mismatch (-want +got):\n%s", diff)
@@ -66,7 +66,7 @@ func TestApplyTabAction(t *testing.T) {
 }
 
 func TestCompleteCommand(t *testing.T) {
-	s := New(strings.NewReader(""), io.Discard, io.Discard)
+	c := New(repl.NewState())
 
 	tests := []struct {
 		buffer     string
@@ -78,12 +78,12 @@ func TestCompleteCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.buffer, func(t *testing.T) {
-			gotBuffer, gotListings := s.completeCommand(tt.buffer)
+			gotBuffer, gotListings := c.CompleteCommand(tt.buffer)
 			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
-				t.Errorf("completeCommand(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
+				t.Errorf("CompleteCommand(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 			if diff := cmp.Diff([]string(nil), gotListings, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("completeCommand(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
+				t.Errorf("CompleteCommand(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}
@@ -158,15 +158,15 @@ func TestCompleteArgument(t *testing.T) {
 		},
 	}
 
-	s := New(strings.NewReader(""), io.Discard, io.Discard)
+	c := New(repl.NewState())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuffer, gotListings := s.completeArgument(tt.buffer, tt.candidates)
+			gotBuffer, gotListings := c.CompleteArgument(tt.buffer, tt.candidates)
 			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
-				t.Errorf("completeArgument(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
+				t.Errorf("CompleteArgument(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 			if diff := cmp.Diff(tt.wantListings, gotListings, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("completeArgument(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
+				t.Errorf("CompleteArgument(%q) listings mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
 	}
@@ -213,10 +213,20 @@ func TestBuildCompleterOptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildCompleterOptions(tt.buffer)
+			got := BuildCompleterOptions(tt.buffer)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("buildCompleterOptions(%q) mismatch (-want +got):\n%s", tt.buffer, diff)
+				t.Errorf("BuildCompleterOptions(%q) mismatch (-want +got):\n%s", tt.buffer, diff)
 			}
 		})
+	}
+}
+
+func TestHandleTab(t *testing.T) {
+	c := New(repl.NewState())
+	state := &terminal.TabState{}
+
+	got := c.HandleTab(state, "ech")
+	if diff := cmp.Diff(terminal.TabResult{Buffer: "echo "}, got, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("HandleTab() mismatch (-want +got):\n%s", diff)
 	}
 }

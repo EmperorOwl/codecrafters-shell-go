@@ -91,20 +91,9 @@ func TestCommandFound(t *testing.T) {
 		wantOK     bool
 		wantNotFnd string
 	}{
-		{
-			name:   "empty fields",
-			fields: nil,
-		},
-		{
-			name:   "builtin command",
-			fields: []string{"echo", "hello"},
-			wantOK: true,
-		},
-		{
-			name:       "missing command",
-			fields:     []string{"missing"},
-			wantNotFnd: "missing",
-		},
+		{name: "empty fields", fields: nil},
+		{name: "builtin", fields: []string{"echo", "hello"}, wantOK: true},
+		{name: "missing", fields: []string{"missing"}, wantNotFnd: "missing"},
 	}
 
 	for _, tt := range tests {

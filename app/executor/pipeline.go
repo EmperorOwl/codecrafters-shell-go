@@ -5,25 +5,10 @@ import (
 	"io"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
-	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	"github.com/codecrafters-io/shell-starter-go/app/repl"
 )
 
-// ParsePipelineSegments parses redirect and background markers from pipeline segments.
-func ParsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
-	commands := make([][]string, len(segments))
-	var redirect parser.Redirect
-	for i, segment := range segments {
-		fields, segmentRedirect := parser.ParseRedirect(segment)
-		fields, _ = parser.StripBackground(fields)
-		commands[i] = fields
-		if i == len(segments)-1 {
-			redirect = segmentRedirect
-		}
-	}
-	return commands, redirect
-}
-
-func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *builtins.State) error {
+func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *repl.State) error {
 	n := len(segments)
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)

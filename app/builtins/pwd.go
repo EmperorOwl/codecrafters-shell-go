@@ -18,6 +18,10 @@ func Pwd(out io.Writer) {
 	fmt.Fprintln(out, cwd)
 }
 
+func init() {
+	register("pwd", pwdBuiltin)
+}
+
 func pwdBuiltin(ctx *Context, args []string) (bool, error) {
 	Pwd(ctx.Stdout)
 	return false, nil

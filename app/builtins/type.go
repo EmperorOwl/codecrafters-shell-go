@@ -21,6 +21,10 @@ func Type(out io.Writer, command string) {
 	fmt.Fprintln(out, TypeOutput(command))
 }
 
+func init() {
+	register("type", typeBuiltin)
+}
+
 func typeBuiltin(ctx *Context, args []string) (bool, error) {
 	target := ""
 	if len(args) > 0 {

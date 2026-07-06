@@ -11,7 +11,7 @@ type Terminal struct {
 	tabHandler TabHandler
 	stdout     io.Writer
 	stderr     io.Writer
-	session    *Session
+	rawTTY     *RawMode
 	reader     *bufio.Reader
 	rawMode    bool
 }
@@ -22,7 +22,7 @@ func New(tabHandler TabHandler, stdin io.Reader, stdout, stderr io.Writer) *Term
 		tabHandler: tabHandler,
 		stdout:     stdout,
 		stderr:     stderr,
-		session:    NewSession(stdin),
+		rawTTY:     NewRawMode(stdin),
 		reader:     bufio.NewReader(stdin),
 	}
 }
@@ -36,7 +36,7 @@ func (t *Terminal) ReadLine() (line string, eof bool, err error) {
 
 // WriteLine writes a single line to stdout, including a trailing newline.
 func (t *Terminal) WriteLine(text string) {
-	stdout := WrapWriter(t.stdout, t.session.RawMode())
+	stdout := WrapWriter(t.stdout, t.rawTTY.Active())
 	fmt.Fprintln(stdout, text)
 }
 
@@ -52,11 +52,11 @@ func (t *Terminal) Stderr() io.Writer {
 
 // PrepareRead re-enables raw mode before the next prompt.
 func (t *Terminal) PrepareRead() bool {
-	t.rawMode = t.session.PrepareRead()
+	t.rawMode = t.rawTTY.PrepareRead()
 	return t.rawMode
 }
 
-// Close restores the terminal session.
+// Close restores the terminal to cooked mode.
 func (t *Terminal) Close() error {
-	return t.session.Close()
+	return t.rawTTY.Close()
 }

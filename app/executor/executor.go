@@ -3,8 +3,8 @@ package executor
 import (
 	"io"
 
-	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
+	"github.com/codecrafters-io/shell-starter-go/app/repl"
 )
 
 // Executor runs parsed commands using injected I/O streams.
@@ -25,7 +25,7 @@ type Outputs struct {
 }
 
 // ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(outputs Outputs, state *builtins.State, fields []string) (bool, error) {
+func (e *Executor) ExecuteBuiltin(outputs Outputs, state *repl.State, fields []string) (bool, error) {
 	var exitShell bool
 	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
 		var err error
@@ -58,7 +58,7 @@ func (e *Executor) ExecuteExternalBackground(outputs Outputs, fields []string, o
 }
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(outputs Outputs, state *builtins.State, segments [][]string) error {
+func (e *Executor) ExecutePipeline(outputs Outputs, state *repl.State, segments [][]string) error {
 	if len(segments) < 2 {
 		return nil
 	}

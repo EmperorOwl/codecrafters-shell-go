@@ -45,6 +45,10 @@ func Complete(stdout, stderr io.Writer, args []string, registry *completion.Comp
 	}
 }
 
+func init() {
+	register("complete", completeBuiltin)
+}
+
 func completeBuiltin(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
