@@ -110,22 +110,26 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	}
 
 	if background {
-		var jobNumber int
-		pid, err := s.executor.ExecuteExternalBackground(outputs, fields, func() {
-			s.state.Jobs.MarkDone(jobNumber)
-		})
-		if err != nil {
-			return true, err
-		}
-		if pid > 0 {
-			jobNumber = s.state.Jobs.Add(pid, line)
-			s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
-		}
-		return false, nil
+		return s.executeBackgroundCommand(outputs, fields, line)
 	}
 
 	if err := s.executor.ExecuteExternalForeground(outputs, fields); err != nil {
 		return true, err
+	}
+	return false, nil
+}
+
+func (s *Shell) executeBackgroundCommand(outputs executor.Outputs, fields []string, line string) (bool, error) {
+	var jobNumber int
+	pid, err := s.executor.ExecuteExternalBackground(outputs, fields, func() {
+		s.state.Jobs.MarkDone(jobNumber)
+	})
+	if err != nil {
+		return true, err
+	}
+	if pid > 0 {
+		jobNumber = s.state.Jobs.Add(pid, line)
+		s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
 	}
 	return false, nil
 }
