@@ -9,7 +9,6 @@ import (
 // Terminal handles shell I/O.
 type Terminal struct {
 	tabHandler TabHandler
-	stdin      io.Reader
 	stdout     io.Writer
 	stderr     io.Writer
 	session    *Session
@@ -21,7 +20,6 @@ type Terminal struct {
 func New(tabHandler TabHandler, stdin io.Reader, stdout, stderr io.Writer) *Terminal {
 	return &Terminal{
 		tabHandler: tabHandler,
-		stdin:      stdin,
 		stdout:     stdout,
 		stderr:     stderr,
 		session:    NewSession(stdin),

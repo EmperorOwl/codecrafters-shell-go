@@ -2,7 +2,13 @@ package terminal
 
 import "io"
 
-// lfWriter translates LF to CRLF so output starts at column 0 in raw mode.
+// lfWriter translates LF to CRLF for output written while raw mode is active.
+//
+// In cooked mode the terminal driver turns \n into \r\n automatically, so each
+// new line starts at column 0. Raw mode disables that processing: \n moves the
+// cursor down but leaves the column unchanged. The next line then prints where
+// the previous one ended, which looks like leading spaces. Writing \r\n 
+// returns to column 0 first.
 type lfWriter struct {
 	w io.Writer
 }
