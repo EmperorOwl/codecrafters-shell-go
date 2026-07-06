@@ -15,22 +15,21 @@ import (
 
 // Shell is the top-level orchestrator for the interactive shell.
 type Shell struct {
-	terminal           *terminal.Terminal
-	executor           *executor.Executor
-	jobTable         *jobs.JobTable
-	completionRegistry *completion.CompletionRegistry
+	terminal *terminal.Terminal
+	executor *executor.Executor
+	state    *builtins.State
 }
 
 // New wires shell dependencies and returns a ready-to-run shell.
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
-	jobTable := &jobs.JobTable{}
-	completionRegistry := completion.NewCompletionRegistry()
-	ex := executor.New(jobTable, completionRegistry, stdin)
+	state := &builtins.State{
+		Jobs:       &jobs.JobTable{},
+		Completion: completion.NewCompletionRegistry(),
+	}
 
 	s := &Shell{
-		executor:           ex,
-		jobTable:           jobTable,
-		completionRegistry: completionRegistry,
+		executor: executor.New(stdin),
+		state:    state,
 	}
 	s.terminal = terminal.New(s, stdin, stdout, stderr)
 	return s
@@ -103,7 +102,7 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	}
 
 	if builtins.IsBuiltin(fields[0]) {
-		exitShell, err := s.executor.ExecuteBuiltin(outputs, fields)
+		exitShell, err := s.executor.ExecuteBuiltin(outputs, s.state, fields)
 		if exitShell {
 			return true, nil
 		}
@@ -111,11 +110,15 @@ func (s *Shell) executeCommand(tokens []string, line string) (bool, error) {
 	}
 
 	if background {
-		jobNumber, pid, err := s.executor.ExecuteExternalBackground(outputs, fields, line)
+		var jobNumber int
+		pid, err := s.executor.ExecuteExternalBackground(outputs, fields, func() {
+			s.state.Jobs.MarkDone(jobNumber)
+		})
 		if err != nil {
 			return true, err
 		}
-		if jobNumber > 0 {
+		if pid > 0 {
+			jobNumber = s.state.Jobs.Add(pid, line)
 			s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
 		}
 		return false, nil
@@ -144,7 +147,7 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 		Redirect: redirect,
 	}
 
-	if err := s.executor.ExecutePipeline(outputs, commands); err != nil {
+	if err := s.executor.ExecutePipeline(outputs, s.state, commands); err != nil {
 		return true, err
 	}
 	return false, nil
@@ -152,7 +155,7 @@ func (s *Shell) executePipeline(segments [][]string) (bool, error) {
 
 // writeReapedJobs prints any finished background jobs before the next prompt.
 func (s *Shell) writeReapedJobs() {
-	for _, line := range jobs.FormatLines(s.jobTable.ReapDone()) {
+	for _, line := range jobs.FormatLines(s.state.Jobs.ReapDone()) {
 		s.terminal.WriteLine(line)
 	}
 }

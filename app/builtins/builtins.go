@@ -8,13 +8,17 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 )
 
+// State holds stable shell session state shared across command invocations.
+type State struct {
+	Jobs       *jobs.JobTable
+	Completion *completion.CompletionRegistry
+}
+
 // Context holds per-invocation I/O and shell state for a builtin command.
 type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
-
-	Jobs       *jobs.JobTable
-	Completion *completion.CompletionRegistry
+	State  *State
 }
 
 type Handler func(ctx *Context, args []string) (exit bool, err error)

@@ -23,7 +23,7 @@ func ParsePipelineSegments(segments [][]string) ([][]string, parser.Redirect) {
 	return commands, redirect
 }
 
-func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer) error {
+func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *builtins.State) error {
 	n := len(segments)
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)
@@ -51,7 +51,7 @@ func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer) er
 
 			var err error
 			if builtins.IsBuiltin(fields[0]) {
-				_, err = e.runBuiltin(out, stderr, fields, stdin)
+				_, err = e.runBuiltin(out, stderr, state, fields, stdin)
 			} else {
 				err = e.runExternal(out, stderr, fields, stdin)
 			}

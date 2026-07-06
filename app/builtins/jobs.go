@@ -14,6 +14,9 @@ func Jobs(out io.Writer, table *jobs.JobTable) {
 }
 
 func jobsBuiltin(ctx *Context, args []string) (bool, error) {
-	Jobs(ctx.Stdout, ctx.Jobs)
+	if ctx.State == nil {
+		return false, nil
+	}
+	Jobs(ctx.Stdout, ctx.State.Jobs)
 	return false, nil
 }

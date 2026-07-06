@@ -182,7 +182,7 @@ func completionSuffix(token string) string {
 // registered, signalling that filename completion should be used instead.
 func (s *Shell) programmableCandidates(buffer string) ([]string, bool) {
 	opts := buildCompleterOptions(buffer)
-	scriptPath, ok := s.completionRegistry.Lookup(opts.Command)
+	scriptPath, ok := s.state.Completion.Lookup(opts.Command)
 	if !ok {
 		return nil, false
 	}

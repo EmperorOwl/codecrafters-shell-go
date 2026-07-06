@@ -68,7 +68,7 @@ func TestWriteReapedJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			s := New(strings.NewReader(""), &out, io.Discard)
-			tt.setup(s.jobTable)
+			tt.setup(s.state.Jobs)
 
 			s.writeReapedJobs()
 
@@ -77,7 +77,7 @@ func TestWriteReapedJobs(t *testing.T) {
 				t.Errorf("writeReapedJobs() output mismatch (-want +got):\n%s", diff)
 			}
 
-			if done := s.jobTable.ReapDone(); len(done) != 0 {
+			if done := s.state.Jobs.ReapDone(); len(done) != 0 {
 				t.Errorf("writeReapedJobs() left %d done jobs in table", len(done))
 			}
 		})

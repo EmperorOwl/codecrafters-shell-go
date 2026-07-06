@@ -9,12 +9,11 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 )
 
-func (e *Executor) runBuiltin(stdout, stderr io.Writer, fields []string, stdin io.Reader) (bool, error) {
+func (e *Executor) runBuiltin(stdout, stderr io.Writer, state *builtins.State, fields []string, stdin io.Reader) (bool, error) {
 	ctx := &builtins.Context{
-		Stdout:     stdout,
-		Stderr:     stderr,
-		Jobs:       e.jobTable,
-		Completion: e.completionRegistry,
+		Stdout: stdout,
+		Stderr: stderr,
+		State:  state,
 	}
 	if stdin != nil {
 		return runDrainingStdin(fields[0], fields[1:], ctx, stdin)
@@ -31,23 +30,13 @@ func (e *Executor) runExternal(stdout, stderr io.Writer, fields []string, stdin 
 	return prog.Run()
 }
 
-func (e *Executor) runExternalBackground(stdout, stderr io.Writer, fields []string, line string) (int, int, error) {
+func (e *Executor) runExternalBackground(stdout, stderr io.Writer, fields []string, onExit func()) (int, error) {
 	prog, ok := external.New(fields, stdout, stderr)
 	if !ok {
-		return 0, 0, nil
+		return 0, nil
 	}
 	prog.Stdin = e.stdin
-
-	var jobNumber int
-	pid, err := prog.RunInBackground(func() {
-		e.jobTable.MarkDone(jobNumber)
-	})
-	if err != nil {
-		return 0, 0, err
-	}
-
-	jobNumber = e.jobTable.Add(pid, line)
-	return jobNumber, pid, nil
+	return prog.RunInBackground(onExit)
 }
 
 // runDrainingStdin runs a builtin while discarding pipeline stdin in the background.

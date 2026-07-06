@@ -50,18 +50,24 @@ func TestRun(t *testing.T) {
 			name:        "complete runs",
 			builtinName: "complete",
 			args:        []string{"-C", "/path/to/script", "git"},
-			ctx:         &Context{Completion: completion.NewCompletionRegistry()},
+			ctx: &Context{
+				State: &State{Completion: completion.NewCompletionRegistry()},
+			},
 		},
 		{
 			name:        "complete -p runs",
 			builtinName: "complete",
 			args:        []string{"-p", "git"},
-			ctx:         &Context{Completion: completion.NewCompletionRegistry()},
+			ctx: &Context{
+				State: &State{Completion: completion.NewCompletionRegistry()},
+			},
 		},
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
-			ctx:         &Context{Jobs: &jobs.JobTable{}},
+			ctx: &Context{
+				State: &State{Jobs: &jobs.JobTable{}},
+			},
 		},
 	}
 

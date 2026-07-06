@@ -46,6 +46,9 @@ func Complete(stdout, stderr io.Writer, args []string, registry *completion.Comp
 }
 
 func completeBuiltin(ctx *Context, args []string) (bool, error) {
-	Complete(ctx.Stdout, ctx.Stderr, args, ctx.Completion)
+	if ctx.State == nil {
+		return false, nil
+	}
+	Complete(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
 	return false, nil
 }

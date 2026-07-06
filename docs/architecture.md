@@ -20,7 +20,7 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 | --- | --- | --- |
 | **Struct** (owned state or injected deps) | `Shell`, `Terminal`, `Executor`, `JobTable`, `CompletionRegistry`, `ExternalProgram` | Session state, lifecycle, or dependencies wired at `New()` |
 | **Package functions** (stateless) | `parser`, `completion`, `builtins`, `files`; `external` PATH helpers | Pure input→output; no per-shell instance needed |
-| **Types only** | `Redirect`, `Job`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
+| **Types only** | `Redirect`, `Job`, `State`, `BuiltinContext`, `CompleterOptions`, `TabState`, `TabResult` | Data passed between layers; `CompleterOptions` lives in `completion` |
 
 ## Class diagram
 
@@ -29,8 +29,7 @@ classDiagram
     class Shell {
         -terminal Terminal
         -executor Executor
-        -jobTable JobTable
-        -completionRegistry CompletionRegistry
+        -state State
         +Run() error
         +ExecuteLine(string) bool, error
         +HandleTab(TabState, string) TabResult
@@ -60,14 +59,12 @@ classDiagram
     }
 
     class Executor {
-        -jobTable JobTable
-        -completionRegistry CompletionRegistry
         -stdin io.Reader
-        +New(JobTable, CompletionRegistry, io.Reader)
-        +ExecuteBuiltin(Outputs, []string) bool, error
+        +New(io.Reader)
+        +ExecuteBuiltin(Outputs, State, []string) bool, error
         +ExecuteExternalForeground(Outputs, []string) error
-        +ExecuteExternalBackground(Outputs, []string, string) int, int, error
-        +ExecutePipeline(Outputs, [][]string) error
+        +ExecuteExternalBackground(Outputs, []string, func()) int, error
+        +ExecutePipeline(Outputs, State, [][]string) error
     }
 
     class external {
@@ -91,13 +88,18 @@ classDiagram
         +Run(string, []string, BuiltinContext) bool, error
     }
 
-    class BuiltinContext {
-        +Stdout io.Writer
-        +Stderr io.Writer
+    class State {
         +Jobs JobTable
         +Completion CompletionRegistry
     }
 
+    class BuiltinContext {
+        +Stdout io.Writer
+        +Stderr io.Writer
+        +State State
+    }
+
+    builtins ..> State
     builtins ..> BuiltinContext
 
     class Job {
@@ -182,8 +184,7 @@ classDiagram
     Executor ..> builtins
     Shell --> Terminal : terminal
     Shell --> Executor : executor
-    Shell --> JobTable : jobTable
-    Shell --> CompletionRegistry : completionRegistry
+    Shell --> State : state
     Shell ..|> TabHandler : implements
     Shell ..> parser
     Shell ..> external
@@ -192,8 +193,6 @@ classDiagram
     Shell ..> builtins
     Shell ..> jobs
     Terminal --> TabHandler : tabHandler
-    Executor --> JobTable : jobTable
-    Executor --> CompletionRegistry : completionRegistry
     Executor ..> BuiltinContext : builds per call
 ```
 
@@ -201,7 +200,7 @@ classDiagram
 
 Owned by `Shell.Run()`:
 
-1. `writeReapedJobs()` — `jobTable.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
+1. `writeReapedJobs()` — `state.Jobs.ReapDone()` → `jobs.FormatLines` → `terminal.WriteLine` each line
 2. `terminal.ReadLine()`
 3. `ExecuteLine(line)` — `parser.*`, resolve command, dispatch to `executor` (redirect open/close handled inside executor)
 4. Repeat until exit or EOF
@@ -214,7 +213,7 @@ Owned by `shell/tab.go`.
 2. `terminal` calls `tabHandler.HandleTab(state, buffer)` — implemented by `Shell`
 3. `Shell.completeBuffer` routes to command, programmable, or filename completion:
    - **Commands:** deduplicated `builtins.Names` + PATH (`commandCandidates`)
-   - **Programmable:** `buildCompleterOptions` → `CompletionRegistry.Lookup` → `completion.RunCompleter`
+   - **Programmable:** `buildCompleterOptions` → `state.Completion.Lookup` → `completion.RunCompleter`
    - **Files:** `files.ListInDir` for the current argument
 4. `Shell` calls `completion.Complete` on the gathered candidates
 5. `Shell` applies double-Tab logic (bell on first Tab, listings on second) and returns `TabResult`
@@ -230,12 +229,12 @@ The `complete` builtin registers and unregisters scripts via `CompletionRegistry
 | --- | --- |
 | Builtin implementations (`echo`, `cd`, …) | `builtins` package |
 | Dispatch (`Run`, `IsBuiltin`, `Names`) | `builtins` package functions |
-| Per-invocation I/O and shell state | `BuiltinContext` |
+| Per-invocation I/O and shell state | `BuiltinContext` with `State` |
 | Invoking builtins (single command or pipeline stage) | `Executor.ExecuteBuiltin` → `builtins.Run` |
 | Routing builtin vs external | `Shell.ExecuteLine` via `builtins.IsBuiltin` and `external.FindExecutableInPath` |
 | Builtin names for tab completion | `shell/tab.go` via `commandCandidates` (`builtins.Names` + PATH) |
 
-`Shell` passes `executor.Outputs` into execute methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin from `New` for foreground and background external commands, opens and closes redirect files around command execution, and wires `JobTable` and `CompletionRegistry`.
+`Shell` owns `builtins.State` (jobs and completion registry) and passes `executor.Outputs` plus `State` into execute methods at execution time so raw-mode LF translation is resolved when commands run. `Executor` stores stdin from `New`, starts processes, and builds `BuiltinContext` per builtin call. Background job registration (`Add`, `MarkDone`, `[n] pid` output) is handled by `Shell`.
 
 Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with thin handlers registered in the handler table.
 
@@ -247,4 +246,4 @@ Individual builtins stay as testable functions (e.g. `Echo`, `Cd`, `Type`) with 
 - `external.FindExecutableInPath` → foreground or background external execution
 - Neither → `terminal.WriteLine` with command-not-found message
 
-Background job startup (`[n] pid`) is printed by `Shell` via `terminal.WriteLine` after `ExecuteExternalBackground` returns.
+Background job startup (`[n] pid`) is printed by `Shell` after `ExecuteExternalBackground` returns a PID and `JobTable.Add` assigns a job number.
