@@ -2,6 +2,7 @@ package builtins
 
 import (
 	"io"
+	"strconv"
 
 	"github.com/codecrafters-io/shell-starter-go/app/history"
 )
@@ -14,11 +15,29 @@ func historyBuiltin(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
 	}
-	History(ctx.Stdout, ctx.State.History)
+	History(ctx.Stdout, ctx.State.History, parseHistoryLimit(args))
 	return false, nil
 }
 
-// History prints all commands in the history table.
-func History(out io.Writer, list *history.HistoryList) {
-	history.WriteAll(out, list.List())
+// History prints commands from the history list. A positive limit shows only
+// the last n entries; zero shows the full history.
+func History(out io.Writer, list *history.HistoryList, limit int) {
+	var entries []history.Entry
+	if limit > 0 {
+		entries = list.ListLast(limit)
+	} else {
+		entries = list.List()
+	}
+	history.WriteAll(out, entries)
+}
+
+func parseHistoryLimit(args []string) int {
+	if len(args) == 0 {
+		return 0
+	}
+	limit, err := strconv.Atoi(args[0])
+	if err != nil || limit <= 0 {
+		return 0
+	}
+	return limit
 }

@@ -52,6 +52,52 @@ func TestHistoryList_AddAndList(t *testing.T) {
 	}
 }
 
+func TestHistoryList_ListLast(t *testing.T) {
+	tests := []struct {
+		name     string
+		commands []string
+		limit    int
+		want     []Entry
+	}{
+		{
+			name:  "empty history",
+			limit: 2,
+		},
+		{
+			name:     "limit greater than history length",
+			commands: []string{"echo first"},
+			limit:    2,
+			want: []Entry{{
+				Number:  1,
+				Command: "echo first",
+			}},
+		},
+		{
+			name:     "shows last two commands with original numbers",
+			commands: []string{"echo first", "echo second", "history 2"},
+			limit:    2,
+			want: []Entry{
+				{Number: 2, Command: "echo second"},
+				{Number: 3, Command: "history 2"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var list HistoryList
+			for _, command := range tt.commands {
+				list.Add(command)
+			}
+
+			got := list.ListLast(tt.limit)
+			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("ListLast(%d) mismatch (-want +got):\n%s", tt.limit, diff)
+			}
+		})
+	}
+}
+
 func TestWriteAll(t *testing.T) {
 	tests := []struct {
 		name     string

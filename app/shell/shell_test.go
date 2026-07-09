@@ -180,6 +180,13 @@ func TestExecuteLine(t *testing.T) {
 			},
 		},
 		{
+			name: "history limit shows last entry",
+			line: "history 1",
+			wantStdout: []string{
+				"    1  history 1",
+			},
+		},
+		{
 			name: "unknown command prints error",
 			line: "missing",
 			wantStdout: []string{

@@ -13,6 +13,7 @@ func TestHistory(t *testing.T) {
 	tests := []struct {
 		name     string
 		commands []string
+		limit    int
 		want     string
 	}{
 		{
@@ -27,6 +28,15 @@ func TestHistory(t *testing.T) {
 				"    3  history",
 			}, "\n") + "\n",
 		},
+		{
+			name:     "limits to last two commands",
+			commands: []string{"echo hello", "echo world", "invalid_command", "history 2"},
+			limit:    2,
+			want: strings.Join([]string{
+				"    3  invalid_command",
+				"    4  history 2",
+			}, "\n") + "\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -37,7 +47,7 @@ func TestHistory(t *testing.T) {
 			}
 
 			var out bytes.Buffer
-			History(&out, list)
+			History(&out, list, tt.limit)
 
 			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
 				t.Errorf("History() output mismatch (-want +got):\n%s", diff)

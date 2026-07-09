@@ -27,13 +27,28 @@ func (l *HistoryList) Add(command string) {
 
 // List returns a snapshot of all history entries with line numbers.
 func (l *HistoryList) List() []Entry {
+	return l.listEntries(0)
+}
+
+// ListLast returns the last n history entries, preserving original line numbers.
+// If n is zero or greater than the number of entries, all entries are returned.
+func (l *HistoryList) ListLast(n int) []Entry {
+	return l.listEntries(n)
+}
+
+func (l *HistoryList) listEntries(limit int) []Entry {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	entries := make([]Entry, len(l.commands))
-	for i, command := range l.commands {
+	start := 0
+	if limit > 0 && limit < len(l.commands) {
+		start = len(l.commands) - limit
+	}
+
+	entries := make([]Entry, len(l.commands)-start)
+	for i, command := range l.commands[start:] {
 		entries[i] = Entry{
-			Number:  i + 1,
+			Number:  start + i + 1,
 			Command: command,
 		}
 	}
