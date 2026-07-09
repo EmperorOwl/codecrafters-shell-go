@@ -3,6 +3,7 @@ package history
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -174,6 +175,28 @@ func TestHistoryList_ReadFromFile(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("ReadFromFile() history mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryList_WriteToFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	var list HistoryList
+	list.Add("echo hello")
+	list.Add("echo world")
+	list.Add("history -w " + path)
+
+	if err := list.WriteToFile(path); err != nil {
+		t.Fatalf("WriteToFile() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := "echo hello\necho world\nhistory -w " + path + "\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("WriteToFile() content mismatch (-want +got):\n%s", diff)
 	}
 }
 

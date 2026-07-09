@@ -96,3 +96,38 @@ func TestReadLines(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteLines(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines []string
+		want  string
+	}{
+		{
+			name: "writes lines with trailing newline",
+			lines: []string{
+				"echo hello",
+				"echo world",
+				"history -w /tmp/hist",
+			},
+			want: "echo hello\necho world\nhistory -w /tmp/hist\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "lines.txt")
+			if err := WriteLines(path, tt.lines); err != nil {
+				t.Fatalf("WriteLines() error = %v", err)
+			}
+
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("ReadFile() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.want, string(got)); diff != "" {
+				t.Errorf("WriteLines() content mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

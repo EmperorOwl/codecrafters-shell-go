@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 // ListInDir returns sorted file and directory names in dir relative to base.
@@ -49,4 +50,10 @@ func ReadLines(path string) ([]string, error) {
 		return nil, err
 	}
 	return lines, nil
+}
+
+// WriteLines writes lines to path, one per line, with a trailing newline.
+func WriteLines(path string, lines []string) error {
+	content := strings.Join(lines, "\n") + "\n"
+	return os.WriteFile(path, []byte(content), 0o644)
 }

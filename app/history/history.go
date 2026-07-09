@@ -67,6 +67,14 @@ func (l *HistoryList) ReadFromFile(path string) error {
 	return nil
 }
 
+// WriteToFile writes all commands in the history list to path.
+func (l *HistoryList) WriteToFile(path string) error {
+	l.mu.Lock()
+	commands := append([]string(nil), l.commands...)
+	l.mu.Unlock()
+	return files.WriteLines(path, commands)
+}
+
 func (l *HistoryList) listEntries(limit int) []Entry {
 	l.mu.Lock()
 	defer l.mu.Unlock()
