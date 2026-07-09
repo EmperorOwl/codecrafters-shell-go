@@ -151,16 +151,17 @@ func TestHistoryList_Previous(t *testing.T) {
 	}
 }
 
-func TestNewListLoadsHistfile(t *testing.T) {
+func TestHistoryList_LoadHistfile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 	content := "echo hello\necho world\n\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	t.Setenv("HISTFILE", path)
-
-	list := NewList()
+	var list HistoryList
+	if err := list.LoadHistfile(path); err != nil {
+		t.Fatalf("LoadHistfile() error = %v", err)
+	}
 	list.Add("history")
 
 	got := list.List()
@@ -170,7 +171,7 @@ func TestNewListLoadsHistfile(t *testing.T) {
 		{Number: 3, Command: "history"},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("NewList() history mismatch (-want +got):\n%s", diff)
+		t.Errorf("LoadHistfile() history mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -181,40 +182,6 @@ func TestHistoryList_LoadHistfileMissingFile(t *testing.T) {
 	}
 	if got := list.List(); len(got) != 0 {
 		t.Fatalf("LoadHistfile() history = %v, want empty", got)
-	}
-}
-
-func TestHistoryList_WriteHistfile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-	t.Setenv("HISTFILE", path)
-
-	var list HistoryList
-	list.Add("echo hello")
-	list.Add("echo world")
-	list.Add("exit")
-
-	if err := list.WriteHistfile(); err != nil {
-		t.Fatalf("WriteHistfile() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-
-	want := "echo hello\necho world\nexit\n"
-	if diff := cmp.Diff(want, string(got)); diff != "" {
-		t.Errorf("WriteHistfile() content mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestHistoryList_WriteHistfileUnset(t *testing.T) {
-	t.Setenv("HISTFILE", "")
-
-	var list HistoryList
-	list.Add("echo hello")
-	if err := list.WriteHistfile(); err != nil {
-		t.Fatalf("WriteHistfile() error = %v", err)
 	}
 }
 

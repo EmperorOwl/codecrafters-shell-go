@@ -23,11 +23,9 @@ type HistoryList struct {
 	lastAppended int
 }
 
-// NewList returns a history list, loading HISTFILE when set.
+// NewList returns an empty history list.
 func NewList() *HistoryList {
-	list := &HistoryList{}
-	list.LoadHistfile(os.Getenv("HISTFILE"))
-	return list
+	return &HistoryList{}
 }
 
 // Add records a command line in history.
@@ -64,15 +62,6 @@ func (l *HistoryList) Previous(stepsBack int) (string, bool) {
 // Empty lines are skipped.
 func (l *HistoryList) ReadFromFile(path string) error {
 	return l.appendLinesFromFile(path)
-}
-
-// WriteHistfile writes all commands to HISTFILE when set.
-func (l *HistoryList) WriteHistfile() error {
-	path := os.Getenv("HISTFILE")
-	if path == "" {
-		return nil
-	}
-	return l.WriteToFile(path)
 }
 
 // LoadHistfile loads commands from path into the history list on startup.
