@@ -36,6 +36,18 @@ func (l *HistoryList) ListLast(n int) []Entry {
 	return l.listEntries(n)
 }
 
+// Previous returns the command stepsBack entries before the most recent one.
+// stepsBack 0 is the most recent command.
+func (l *HistoryList) Previous(stepsBack int) (string, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if stepsBack < 0 || stepsBack >= len(l.commands) {
+		return "", false
+	}
+	return l.commands[len(l.commands)-1-stepsBack], true
+}
+
 func (l *HistoryList) listEntries(limit int) []Entry {
 	l.mu.Lock()
 	defer l.mu.Unlock()

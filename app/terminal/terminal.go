@@ -8,22 +8,24 @@ import (
 
 // Terminal handles shell I/O.
 type Terminal struct {
-	tabHandler TabHandler
-	stdout     io.Writer
-	stderr     io.Writer
-	rawTTY     *RawMode
-	reader     *bufio.Reader
-	rawMode    bool
+	tabHandler     TabHandler
+	historyHandler HistoryHandler
+	stdout         io.Writer
+	stderr         io.Writer
+	rawTTY         *RawMode
+	reader         *bufio.Reader
+	rawMode        bool
 }
 
-// New returns a terminal wired to the given streams and tab handler.
-func New(tabHandler TabHandler, stdin io.Reader, stdout, stderr io.Writer) *Terminal {
+// New returns a terminal wired to the given streams and input handlers.
+func New(tabHandler TabHandler, historyHandler HistoryHandler, stdin io.Reader, stdout, stderr io.Writer) *Terminal {
 	return &Terminal{
-		tabHandler: tabHandler,
-		stdout:     stdout,
-		stderr:     stderr,
-		rawTTY:     NewRawMode(stdin),
-		reader:     bufio.NewReader(stdin),
+		tabHandler:     tabHandler,
+		historyHandler: historyHandler,
+		stdout:         stdout,
+		stderr:         stderr,
+		rawTTY:         NewRawMode(stdin),
+		reader:         bufio.NewReader(stdin),
 	}
 }
 
@@ -31,7 +33,7 @@ func New(tabHandler TabHandler, stdin io.Reader, stdout, stderr io.Writer) *Term
 func (t *Terminal) ReadLine() (line string, eof bool, err error) {
 	stdout := WrapWriter(t.stdout, t.rawMode)
 	writePrompt(t.stdout, t.rawMode)
-	return readLine(t.reader, stdout, t.rawMode, t.tabHandler)
+	return readLine(t.reader, stdout, t.rawMode, t.tabHandler, t.historyHandler)
 }
 
 // WriteLine writes a single line to stdout, including a trailing newline.

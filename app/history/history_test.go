@@ -98,6 +98,57 @@ func TestHistoryList_ListLast(t *testing.T) {
 	}
 }
 
+func TestHistoryList_Previous(t *testing.T) {
+	tests := []struct {
+		name      string
+		commands  []string
+		stepsBack int
+		want      string
+		wantOK    bool
+	}{
+		{
+			name:      "empty history",
+			stepsBack: 0,
+		},
+		{
+			name:      "most recent command",
+			commands:  []string{"echo hello", "echo world"},
+			stepsBack: 0,
+			want:      "echo world",
+			wantOK:    true,
+		},
+		{
+			name:      "earlier command",
+			commands:  []string{"echo hello", "echo world"},
+			stepsBack: 1,
+			want:      "echo hello",
+			wantOK:    true,
+		},
+		{
+			name:      "before start of history",
+			commands:  []string{"echo hello"},
+			stepsBack: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var list HistoryList
+			for _, command := range tt.commands {
+				list.Add(command)
+			}
+
+			got, ok := list.Previous(tt.stepsBack)
+			if ok != tt.wantOK {
+				t.Fatalf("Previous(%d) ok = %v, want %v", tt.stepsBack, ok, tt.wantOK)
+			}
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("Previous(%d) mismatch (-want +got):\n%s", tt.stepsBack, diff)
+			}
+		})
+	}
+}
+
 func TestWriteAll(t *testing.T) {
 	tests := []struct {
 		name     string

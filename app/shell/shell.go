@@ -31,7 +31,7 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 		completer: completer.New(state),
 		state:     state,
 	}
-	s.terminal = terminal.New(s, stdin, stdout, stderr)
+	s.terminal = terminal.New(s, s, stdin, stdout, stderr)
 	return s
 }
 
@@ -159,6 +159,11 @@ func (s *Shell) executePipeline(parsed parser.Line) (bool, error) {
 // HandleTab is the TabHandler entry point called by terminal on each Tab press.
 func (s *Shell) HandleTab(state *terminal.TabState, buffer string) terminal.TabResult {
 	return s.completer.HandleTab(state, buffer)
+}
+
+// HistoryPrevious returns a previous command for up-arrow recall.
+func (s *Shell) HistoryPrevious(stepsBack int) (string, bool) {
+	return s.state.History.Previous(stepsBack)
 }
 
 // writeReapedJobs prints any finished background jobs before the next prompt.
