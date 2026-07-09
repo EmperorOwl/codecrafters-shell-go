@@ -7,12 +7,16 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 )
 
-func NoCompletionSpecMessage(command string) string {
-	return "complete: " + command + ": no completion specification"
+func init() {
+	register("complete", completeBuiltin)
 }
 
-func RegisteredSpecMessage(scriptPath, command string) string {
-	return "complete -C '" + scriptPath + "' " + command
+func completeBuiltin(ctx *Context, args []string) (bool, error) {
+	if ctx.State == nil {
+		return false, nil
+	}
+	Complete(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
+	return false, nil
 }
 
 // Complete handles the complete builtin.
@@ -28,10 +32,10 @@ func Complete(stdout, stderr io.Writer, args []string, registry *completion.Comp
 		}
 		command := args[1]
 		if scriptPath, ok := registry.Lookup(command); ok {
-			fmt.Fprintln(stdout, RegisteredSpecMessage(scriptPath, command))
+			fmt.Fprintln(stdout, registeredSpecMessage(scriptPath, command))
 			return
 		}
-		fmt.Fprintln(stderr, NoCompletionSpecMessage(command))
+		fmt.Fprintln(stderr, noCompletionSpecMessage(command))
 	case "-C":
 		if len(args) < 3 {
 			return
@@ -45,14 +49,10 @@ func Complete(stdout, stderr io.Writer, args []string, registry *completion.Comp
 	}
 }
 
-func init() {
-	register("complete", completeBuiltin)
+func noCompletionSpecMessage(command string) string {
+	return "complete: " + command + ": no completion specification"
 }
 
-func completeBuiltin(ctx *Context, args []string) (bool, error) {
-	if ctx.State == nil {
-		return false, nil
-	}
-	Complete(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
-	return false, nil
+func registeredSpecMessage(scriptPath, command string) string {
+	return "complete -C '" + scriptPath + "' " + command
 }

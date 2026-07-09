@@ -6,13 +6,6 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 )
 
-// Jobs prints all jobs in the table, then reaps finished ones.
-func Jobs(out io.Writer, table *jobs.JobTable) {
-	display := table.List()
-	table.ReapDone()
-	jobs.WriteAll(out, display)
-}
-
 func init() {
 	register("jobs", jobsBuiltin)
 }
@@ -23,4 +16,11 @@ func jobsBuiltin(ctx *Context, args []string) (bool, error) {
 	}
 	Jobs(ctx.Stdout, ctx.State.Jobs)
 	return false, nil
+}
+
+// Jobs prints all jobs in the table, then reaps finished ones.
+func Jobs(out io.Writer, table *jobs.JobTable) {
+	display := table.List()
+	table.ReapDone()
+	jobs.WriteAll(out, display)
 }

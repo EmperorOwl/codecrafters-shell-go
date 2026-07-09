@@ -7,20 +7,6 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 )
 
-func TypeOutput(command string) string {
-	if IsBuiltin(command) {
-		return command + " is a shell builtin"
-	}
-	if path, ok := external.FindExecutableInPath(command); ok {
-		return command + " is " + path
-	}
-	return command + ": not found"
-}
-
-func Type(out io.Writer, command string) {
-	fmt.Fprintln(out, TypeOutput(command))
-}
-
 func init() {
 	register("type", typeBuiltin)
 }
@@ -32,4 +18,16 @@ func typeBuiltin(ctx *Context, args []string) (bool, error) {
 	}
 	Type(ctx.Stdout, target)
 	return false, nil
+}
+
+func Type(out io.Writer, command string) {
+	if IsBuiltin(command) {
+		fmt.Fprintln(out, command+" is a shell builtin")
+		return
+	}
+	if path, ok := external.FindExecutableInPath(command); ok {
+		fmt.Fprintln(out, command+" is "+path)
+		return
+	}
+	fmt.Fprintln(out, command+": not found")
 }

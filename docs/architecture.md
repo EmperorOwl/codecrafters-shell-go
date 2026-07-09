@@ -345,11 +345,11 @@ Registered builtins: `cd`, `complete`, `echo`, `exit`, `jobs`, `pwd`, `type`.
 | Per-invocation I/O and state refs           | `builtins.Context` (`Stdout`, `Stderr`, `State *repl.State`)     |
 | Invoking builtins                           | `Executor` → `builtins.Run`                                      |
 | Routing builtin vs external                 | `Shell.ExecuteLine` via `commandFound` and `builtins.IsBuiltin`    |
-| Command resolution (`type`, pre-exec check) | `builtins/type.go` (`TypeOutput`) and `shell.commandFound`       |
+| Command resolution (`type`, pre-exec check) | `builtins/type.go` (`Type`) and `shell.commandFound`              |
 
 ## Command resolution and shell messages
 
-`commandFound` (package-private helper in `shell.go`) checks `builtins.IsBuiltin` then `external.FindExecutableInPath` before execution. The `type` builtin uses the same classification inline in `TypeOutput` with different message formatting.
+`commandFound` (package-private helper in `shell.go`) checks `builtins.IsBuiltin` then `external.FindExecutableInPath` before execution. The `type` builtin uses the same classification inline in `Type` with different message formatting.
 
 `Shell.ExecuteLine` resolves the command before calling executor:
 
