@@ -75,6 +75,8 @@ func (s *Shell) Run() error {
 
 // ExecuteLine parses and runs a single input line.
 func (s *Shell) ExecuteLine(line string) (bool, error) {
+	s.state.History.Add(line)
+
 	parsed := parser.ParseLine(line)
 	if parsed.Pipeline {
 		return s.executePipeline(parsed)

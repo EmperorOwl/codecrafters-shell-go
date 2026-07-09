@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
+	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/repl"
 	"github.com/google/go-cmp/cmp"
@@ -144,6 +145,13 @@ func TestRun(t *testing.T) {
 				State: &repl.State{Jobs: &jobs.JobTable{}},
 			},
 		},
+		{
+			name:        "history runs",
+			builtinName: "history",
+			ctx: &Context{
+				State: &repl.State{History: &history.HistoryList{}},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -174,7 +182,7 @@ func TestIsBuiltin(t *testing.T) {
 }
 
 func TestNames(t *testing.T) {
-	want := []string{"cd", "complete", "echo", "exit", "jobs", "pwd", "type"}
+	want := []string{"cd", "complete", "echo", "exit", "history", "jobs", "pwd", "type"}
 	got := Names()
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Names() mismatch (-want +got):\n%s", diff)

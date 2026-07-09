@@ -173,6 +173,13 @@ func TestExecuteLine(t *testing.T) {
 			},
 		},
 		{
+			name: "history lists previous commands",
+			line: "history",
+			wantStdout: []string{
+				"    1  history",
+			},
+		},
+		{
 			name: "unknown command prints error",
 			line: "missing",
 			wantStdout: []string{
