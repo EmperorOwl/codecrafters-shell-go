@@ -2,6 +2,7 @@ package history
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -146,6 +147,33 @@ func TestHistoryList_Previous(t *testing.T) {
 				t.Errorf("Previous(%d) mismatch (-want +got):\n%s", tt.stepsBack, diff)
 			}
 		})
+	}
+}
+
+func TestHistoryList_ReadFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/histfile"
+	content := "echo hello\necho world\n\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var list HistoryList
+	list.Add("history -r " + path)
+	if err := list.ReadFromFile(path); err != nil {
+		t.Fatalf("ReadFromFile() error = %v", err)
+	}
+	list.Add("history")
+
+	got := list.List()
+	want := []Entry{
+		{Number: 1, Command: "history -r " + path},
+		{Number: 2, Command: "echo hello"},
+		{Number: 3, Command: "echo world"},
+		{Number: 4, Command: "history"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("ReadFromFile() history mismatch (-want +got):\n%s", diff)
 	}
 }
 

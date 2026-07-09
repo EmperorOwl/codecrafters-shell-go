@@ -1,6 +1,7 @@
 package builtins
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 
@@ -13,6 +14,12 @@ func init() {
 
 func historyBuiltin(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
+		return false, nil
+	}
+	if len(args) >= 2 && args[0] == "-r" {
+		if err := ctx.State.History.ReadFromFile(args[1]); err != nil {
+			fmt.Fprintf(ctx.Stderr, "history: %v\n", err)
+		}
 		return false, nil
 	}
 	History(ctx.Stdout, ctx.State.History, parseHistoryLimit(args))

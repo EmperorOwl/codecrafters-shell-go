@@ -60,3 +60,39 @@ func createPath(root, rel string) error {
 	}
 	return os.WriteFile(full, nil, 0644)
 }
+
+func TestReadLines(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    []string
+	}{
+		{
+			name:    "multiple lines",
+			content: "echo hello\necho world\n",
+			want:    []string{"echo hello", "echo world"},
+		},
+		{
+			name:    "includes empty line",
+			content: "echo hello\n\n",
+			want:    []string{"echo hello", ""},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "lines.txt")
+			if err := os.WriteFile(path, []byte(tt.content), 0o644); err != nil {
+				t.Fatalf("WriteFile() error = %v", err)
+			}
+
+			got, err := ReadLines(path)
+			if err != nil {
+				t.Fatalf("ReadLines() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("ReadLines() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

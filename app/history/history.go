@@ -3,7 +3,10 @@ package history
 import (
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+
+	"github.com/codecrafters-io/shell-starter-go/app/files"
 )
 
 // Entry is a numbered command from the shell history.
@@ -46,6 +49,22 @@ func (l *HistoryList) Previous(stepsBack int) (string, bool) {
 		return "", false
 	}
 	return l.commands[len(l.commands)-1-stepsBack], true
+}
+
+// ReadFromFile appends commands from the given file to the history list.
+// Empty lines are skipped.
+func (l *HistoryList) ReadFromFile(path string) error {
+	lines, err := files.ReadLines(path)
+	if err != nil {
+		return err
+	}
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		l.Add(line)
+	}
+	return nil
 }
 
 func (l *HistoryList) listEntries(limit int) []Entry {
