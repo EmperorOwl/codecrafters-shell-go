@@ -66,6 +66,15 @@ func (l *HistoryList) ReadFromFile(path string) error {
 	return l.appendLinesFromFile(path)
 }
 
+// WriteHistfile writes all commands to HISTFILE when set.
+func (l *HistoryList) WriteHistfile() error {
+	path := os.Getenv("HISTFILE")
+	if path == "" {
+		return nil
+	}
+	return l.WriteToFile(path)
+}
+
 // LoadHistfile loads commands from path into the history list on startup.
 // Missing files are ignored. After loading, lastAppended reflects on-disk state.
 func (l *HistoryList) LoadHistfile(path string) error {

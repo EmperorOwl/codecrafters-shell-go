@@ -3,6 +3,8 @@ package shell
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -10,6 +12,29 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
+
+func TestRunWritesHistfileOnExit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	t.Setenv("HISTFILE", path)
+
+	input := strings.NewReader("echo hello\necho world\nexit\n")
+	var out bytes.Buffer
+	s := New(input, &out, io.Discard)
+
+	if err := s.Run(); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := "echo hello\necho world\nexit\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("Run() histfile mismatch (-want +got):\n%s", diff)
+	}
+}
 
 func TestCommandNotFoundMessage(t *testing.T) {
 	tests := []struct {

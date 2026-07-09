@@ -184,6 +184,40 @@ func TestHistoryList_LoadHistfileMissingFile(t *testing.T) {
 	}
 }
 
+func TestHistoryList_WriteHistfile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	t.Setenv("HISTFILE", path)
+
+	var list HistoryList
+	list.Add("echo hello")
+	list.Add("echo world")
+	list.Add("exit")
+
+	if err := list.WriteHistfile(); err != nil {
+		t.Fatalf("WriteHistfile() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := "echo hello\necho world\nexit\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("WriteHistfile() content mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryList_WriteHistfileUnset(t *testing.T) {
+	t.Setenv("HISTFILE", "")
+
+	var list HistoryList
+	list.Add("echo hello")
+	if err := list.WriteHistfile(); err != nil {
+		t.Fatalf("WriteHistfile() error = %v", err)
+	}
+}
+
 func TestHistoryList_ReadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/histfile"

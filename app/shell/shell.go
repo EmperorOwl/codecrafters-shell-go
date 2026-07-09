@@ -43,6 +43,7 @@ func CommandNotFoundMessage(command string) string {
 // Run executes the read-eval loop until exit or EOF.
 func (s *Shell) Run() error {
 	defer s.terminal.Close()
+	defer func() { _ = s.state.History.WriteHistfile() }()
 
 	for {
 		s.terminal.PrepareRead()
