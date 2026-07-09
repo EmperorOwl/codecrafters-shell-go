@@ -151,6 +151,39 @@ func TestHistoryList_Previous(t *testing.T) {
 	}
 }
 
+func TestNewListLoadsHistfile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	content := "echo hello\necho world\n\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Setenv("HISTFILE", path)
+
+	list := NewList()
+	list.Add("history")
+
+	got := list.List()
+	want := []Entry{
+		{Number: 1, Command: "echo hello"},
+		{Number: 2, Command: "echo world"},
+		{Number: 3, Command: "history"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("NewList() history mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryList_LoadHistfileMissingFile(t *testing.T) {
+	var list HistoryList
+	if err := list.LoadHistfile(filepath.Join(t.TempDir(), "missing")); err != nil {
+		t.Fatalf("LoadHistfile() error = %v", err)
+	}
+	if got := list.List(); len(got) != 0 {
+		t.Fatalf("LoadHistfile() history = %v, want empty", got)
+	}
+}
+
 func TestHistoryList_ReadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/histfile"

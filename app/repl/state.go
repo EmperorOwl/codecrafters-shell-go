@@ -17,7 +17,7 @@ type State struct {
 func NewState() *State {
 	return &State{
 		Jobs:       &jobs.JobTable{},
-		History:    &history.HistoryList{},
+		History:    history.NewList(),
 		Completion: completion.NewCompletionRegistry(),
 	}
 }

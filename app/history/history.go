@@ -3,6 +3,7 @@ package history
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -20,6 +21,13 @@ type HistoryList struct {
 	mu           sync.Mutex
 	commands     []string
 	lastAppended int
+}
+
+// NewList returns a history list, loading HISTFILE when set.
+func NewList() *HistoryList {
+	list := &HistoryList{}
+	list.LoadHistfile(os.Getenv("HISTFILE"))
+	return list
 }
 
 // Add records a command line in history.
@@ -55,6 +63,31 @@ func (l *HistoryList) Previous(stepsBack int) (string, bool) {
 // ReadFromFile appends commands from the given file to the history list.
 // Empty lines are skipped.
 func (l *HistoryList) ReadFromFile(path string) error {
+	return l.appendLinesFromFile(path)
+}
+
+// LoadHistfile loads commands from path into the history list on startup.
+// Missing files are ignored. After loading, lastAppended reflects on-disk state.
+func (l *HistoryList) LoadHistfile(path string) error {
+	if path == "" {
+		return nil
+	}
+
+	err := l.appendLinesFromFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	l.mu.Lock()
+	l.lastAppended = len(l.commands)
+	l.mu.Unlock()
+	return nil
+}
+
+func (l *HistoryList) appendLinesFromFile(path string) error {
 	lines, err := files.ReadLines(path)
 	if err != nil {
 		return err
