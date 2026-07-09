@@ -17,8 +17,9 @@ type Entry struct {
 
 // HistoryList stores executed commands for the history builtin.
 type HistoryList struct {
-	mu       sync.Mutex
-	commands []string
+	mu           sync.Mutex
+	commands     []string
+	lastAppended int
 }
 
 // Add records a command line in history.
@@ -72,7 +73,31 @@ func (l *HistoryList) WriteToFile(path string) error {
 	l.mu.Lock()
 	commands := append([]string(nil), l.commands...)
 	l.mu.Unlock()
-	return files.WriteLines(path, commands)
+
+	if err := files.WriteLines(path, commands); err != nil {
+		return err
+	}
+
+	l.mu.Lock()
+	l.lastAppended = len(l.commands)
+	l.mu.Unlock()
+	return nil
+}
+
+// AppendToFile appends commands executed since the last append or write to path.
+func (l *HistoryList) AppendToFile(path string) error {
+	l.mu.Lock()
+	commands := append([]string(nil), l.commands[l.lastAppended:]...)
+	l.mu.Unlock()
+
+	if err := files.AppendLines(path, commands); err != nil {
+		return err
+	}
+
+	l.mu.Lock()
+	l.lastAppended = len(l.commands)
+	l.mu.Unlock()
+	return nil
 }
 
 func (l *HistoryList) listEntries(limit int) []Entry {

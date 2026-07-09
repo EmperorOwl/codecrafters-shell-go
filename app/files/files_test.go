@@ -131,3 +131,30 @@ func TestWriteLines(t *testing.T) {
 		})
 	}
 }
+
+func TestAppendLines(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lines.txt")
+	initial := "echo initial_command_1\necho initial_command_2\n\n"
+	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if err := AppendLines(path, []string{"echo new_command", "history -a " + path}); err != nil {
+		t.Fatalf("AppendLines() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := strings.Join([]string{
+		"echo initial_command_1",
+		"echo initial_command_2",
+		"echo new_command",
+		"history -a " + path,
+	}, "\n") + "\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("AppendLines() content mismatch (-want +got):\n%s", diff)
+	}
+}

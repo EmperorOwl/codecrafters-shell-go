@@ -28,6 +28,12 @@ func historyBuiltin(ctx *Context, args []string) (bool, error) {
 		}
 		return false, nil
 	}
+	if len(args) >= 2 && args[0] == "-a" {
+		if err := ctx.State.History.AppendToFile(args[1]); err != nil {
+			fmt.Fprintf(ctx.Stderr, "history: %v\n", err)
+		}
+		return false, nil
+	}
 	History(ctx.Stdout, ctx.State.History, parseHistoryLimit(args))
 	return false, nil
 }

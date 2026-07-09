@@ -200,6 +200,69 @@ func TestHistoryList_WriteToFile(t *testing.T) {
 	}
 }
 
+func TestHistoryList_AppendToFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	initial := "echo initial_command_1\necho initial_command_2\n\n"
+	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var list HistoryList
+	list.Add("echo new_command")
+	list.Add("history -a " + path)
+
+	if err := list.AppendToFile(path); err != nil {
+		t.Fatalf("AppendToFile() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := strings.Join([]string{
+		"echo initial_command_1",
+		"echo initial_command_2",
+		"echo new_command",
+		"history -a " + path,
+	}, "\n") + "\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("AppendToFile() content mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryList_AppendToFileOnlyNewCommands(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+
+	var list HistoryList
+	list.Add("echo first")
+	list.Add("history -a " + path)
+	if err := list.AppendToFile(path); err != nil {
+		t.Fatalf("first AppendToFile() error = %v", err)
+	}
+
+	list.Add("echo second")
+	list.Add("history -a " + path)
+	if err := list.AppendToFile(path); err != nil {
+		t.Fatalf("second AppendToFile() error = %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := strings.Join([]string{
+		"echo first",
+		"history -a " + path,
+		"echo second",
+		"history -a " + path,
+	}, "\n") + "\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("AppendToFile() content mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestWriteAll(t *testing.T) {
 	tests := []struct {
 		name     string

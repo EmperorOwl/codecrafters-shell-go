@@ -57,3 +57,19 @@ func WriteLines(path string, lines []string) error {
 	content := strings.Join(lines, "\n") + "\n"
 	return os.WriteFile(path, []byte(content), 0o644)
 }
+
+// AppendLines appends lines to path, one per line, with a trailing newline.
+func AppendLines(path string, lines []string) error {
+	existing, err := ReadLines(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return WriteLines(path, lines)
+		}
+		return err
+	}
+
+	for len(existing) > 0 && existing[len(existing)-1] == "" {
+		existing = existing[:len(existing)-1]
+	}
+	return WriteLines(path, append(existing, lines...))
+}
