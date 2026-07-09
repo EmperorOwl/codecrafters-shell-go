@@ -80,3 +80,53 @@ func TestHistoryBrowseState_stepUpAtStart(t *testing.T) {
 		t.Errorf("stepsBack mismatch (-want +got):\n%s", diff)
 	}
 }
+
+func TestHistoryBrowseState_stepDown(t *testing.T) {
+	handler := stubHistoryHandler{commands: []string{"echo hello", "echo world"}}
+	var state historyBrowseState
+
+	if _, ok := state.stepUp(handler); !ok {
+		t.Fatal("stepUp() ok = false, want true")
+	}
+	if _, ok := state.stepUp(handler); !ok {
+		t.Fatal("second stepUp() ok = false, want true")
+	}
+
+	got, ok := state.stepDown(handler)
+	if !ok {
+		t.Fatal("stepDown() ok = false, want true")
+	}
+	if diff := cmp.Diff("echo world", got); diff != "" {
+		t.Errorf("stepDown() command mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(1, state.stepsBack); diff != "" {
+		t.Errorf("stepsBack mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryBrowseState_stepDownToEmptyLine(t *testing.T) {
+	handler := stubHistoryHandler{commands: []string{"echo hello", "echo world"}}
+	var state historyBrowseState
+
+	if _, ok := state.stepUp(handler); !ok {
+		t.Fatal("stepUp() ok = false, want true")
+	}
+
+	got, ok := state.stepDown(handler)
+	if !ok {
+		t.Fatal("stepDown() ok = false, want true")
+	}
+	if diff := cmp.Diff("", got); diff != "" {
+		t.Errorf("stepDown() command mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(0, state.stepsBack); diff != "" {
+		t.Errorf("stepsBack mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestHistoryBrowseState_stepDownAtBottom(t *testing.T) {
+	var state historyBrowseState
+	if _, ok := state.stepDown(stubHistoryHandler{commands: []string{"echo hello"}}); ok {
+		t.Fatal("stepDown() ok = true, want false at bottom of history")
+	}
+}

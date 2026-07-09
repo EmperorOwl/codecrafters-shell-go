@@ -44,6 +44,8 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler TabHandler, histo
 
 		switch b {
 		case '\x1b':
+			// ESC starts an ANSI escape sequence. Arrow keys send ESC [ A (up) or
+			// ESC [ B (down); readLineRaw already consumed ESC, so delegate the rest.
 			if handled, newBuffer, ok := handleEscapeSequence(reader, w, historyHandler, &historyState, buffer); ok {
 				if handled {
 					buffer = newBuffer
@@ -91,7 +93,24 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler TabHandler, histo
 	}
 }
 
+// handleEscapeSequence reads the bytes after ESC and handles arrow-key history
+// navigation in raw mode.
+//
+// Terminals send arrow keys as 3-byte CSI sequences:
+//   - up:   ESC [ A  (\x1b[A)
+//   - down: ESC [ B  (\x1b[B)
+//
+// Because readLineRaw already consumed ESC, this function reads the remaining
+// two bytes ([ and A/B). Unrecognized sequences return ok=false so the caller
+// can ignore them.
+//
+// Return values tell readLineRaw how to update the input buffer:
+//   - ok=false: not a handled arrow sequence; ignore ESC
+//   - ok=true, handled=true, newBuffer: replace buffer and redraw the prompt
+//   - ok=true, handled=true, unchanged buffer: arrow pressed at a history
+//     boundary; bell was rung and the current line is kept
 func handleEscapeSequence(reader *bufio.Reader, w io.Writer, historyHandler HistoryHandler, historyState *historyBrowseState, buffer []byte) (handled bool, newBuffer []byte, ok bool) {
+	// Expect CSI introducer '[' after ESC.
 	next, err := reader.ReadByte()
 	if err != nil {
 		return false, buffer, false
@@ -105,11 +124,19 @@ func handleEscapeSequence(reader *bufio.Reader, w io.Writer, historyHandler Hist
 		return false, buffer, false
 	}
 
-	if code != 'A' {
+	if code != 'A' && code != 'B' {
 		return false, buffer, false
 	}
 
-	command, found := historyState.stepUp(historyHandler)
+	var command string
+	var found bool
+	switch code {
+	case 'A':
+		command, found = historyState.stepUp(historyHandler)
+	case 'B':
+		command, found = historyState.stepDown(historyHandler)
+	}
+
 	if !found {
 		ringBell(w)
 		return true, buffer, true
