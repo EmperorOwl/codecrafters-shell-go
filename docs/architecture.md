@@ -20,15 +20,38 @@ Entry point: `main` calls `shell.New(stdin, stdout, stderr).Run()`.
 
 ## Dependency overview
 
+```mermaid
+flowchart TB
+    main --> shell
+
+    shell --> terminal
+    shell --> executor
+    shell --> parser
+    shell --> completer
+    shell --> repl
+    shell --> builtins
+    shell --> external
+    shell --> jobs
+
+    completer --> builtins
+    completer --> completion
+    completer --> external
+    completer --> files
+    completer --> repl
+    completer --> terminal
+
+    executor --> builtins
+    executor --> parser
+    executor --> external
+    executor --> repl
+
+    repl --> jobs
+    repl --> completion
+
+    builtins --> repl
 ```
-main → shell
-shell → {terminal, executor, parser, completer, repl, builtins, external, jobs}
-completer → {builtins, completion, external, files, repl, terminal}
-executor → {builtins, parser, external, repl}
-repl → {jobs, completion}
-builtins → repl          (Context.State only)
-parser, jobs, completion, external, files, terminal → (no internal app deps)
-```
+
+Leaf packages (`parser`, `jobs`, `completion`, `external`, `files`, `terminal`) have no internal app dependencies.
 
 ## Class diagram
 
