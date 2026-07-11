@@ -34,6 +34,15 @@ func TestDeclare(t *testing.T) {
 			args: []string{"foo=bar"},
 		},
 		{
+			name: "stores underscore assignment",
+			args: []string{"_FOO=bar"},
+		},
+		{
+			name:    "rejects digit at start",
+			args:    []string{"67=x"},
+			wantErr: "declare: `67=x': not a valid identifier\n",
+		},
+		{
 			name: "overwrites existing variable",
 			setup: func(store *variables.VariablesStore) {
 				store.Set("foo", "bar")
@@ -64,8 +73,8 @@ func TestDeclare(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			Declare(&stdout, &stderr, tt.args, store)
 
-			if tt.args != nil && len(tt.args) == 1 {
-				if name, value, ok := parseAssignment(tt.args[0]); ok {
+			if tt.wantErr == "" && tt.args != nil && len(tt.args) == 1 {
+				if name, value, ok := parseAssignment(tt.args[0]); ok && isValidIdentifier(name) {
 					got, exists := store.Get(name)
 					if !exists {
 						t.Fatalf("Get(%q) exists = false, want true", name)
