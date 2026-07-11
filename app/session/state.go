@@ -1,4 +1,4 @@
-package repl
+package session
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/variables"
 )
 
-// State holds mutable shell state for the lifetime of the REPL loop.
+// State holds mutable shell state for the lifetime of a shell session.
 type State struct {
 	Jobs       *jobs.Table
 	History    *history.List
@@ -18,7 +18,7 @@ type State struct {
 	Variables  *variables.Store
 }
 
-// NewState returns a fresh REPL state with an empty job table and completion registry.
+// NewState returns a fresh shell session with empty jobs, variables, and completion registry.
 func NewState() *State {
 	histfile := os.Getenv("HISTFILE")
 	list := history.NewList()

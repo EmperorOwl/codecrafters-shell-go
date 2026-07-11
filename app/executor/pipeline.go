@@ -5,10 +5,10 @@ import (
 	"io"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 )
 
-func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *repl.State) error {
+func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *session.State) error {
 	n := len(segments)
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)

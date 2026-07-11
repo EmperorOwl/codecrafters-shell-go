@@ -10,7 +10,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/external"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 	"github.com/codecrafters-io/shell-starter-go/app/variables"
 )
@@ -20,12 +20,12 @@ type Shell struct {
 	terminal  *terminal.Terminal
 	executor  *executor.Executor
 	completer *completer.Completer
-	state     *repl.State
+	state     *session.State
 }
 
 // New wires shell dependencies and returns a ready-to-run shell.
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
-	state := repl.NewState()
+	state := session.NewState()
 
 	s := &Shell{
 		executor:  executor.New(stdin),

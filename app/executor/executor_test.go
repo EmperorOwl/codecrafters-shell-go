@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -17,7 +17,7 @@ import (
 func TestExecuteBuiltin(t *testing.T) {
 	var out bytes.Buffer
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	exitShell, err := e.ExecuteBuiltin(Outputs{
 		Stdout: &out,
@@ -36,7 +36,7 @@ func TestExecuteBuiltin(t *testing.T) {
 
 func TestExecuteBuiltinExit(t *testing.T) {
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	exitShell, err := e.ExecuteBuiltin(Outputs{
 		Stdout: io.Discard,
@@ -69,7 +69,7 @@ func TestExecuteExternalForeground(t *testing.T) {
 func TestExecutePipeline(t *testing.T) {
 	var out bytes.Buffer
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	err := e.ExecutePipeline(Outputs{
 		Stdout: &out,
@@ -89,7 +89,7 @@ func TestExecutePipeline(t *testing.T) {
 func TestExecutePipelineBuiltinMiddle(t *testing.T) {
 	var out bytes.Buffer
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	err := e.ExecutePipeline(Outputs{
 		Stdout: &out,
@@ -112,7 +112,7 @@ func TestStdoutRedirect(t *testing.T) {
 	outPath := filepath.Join(dir, "out.txt")
 
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	_, err := e.ExecuteBuiltin(Outputs{
 		Stdout: io.Discard,
@@ -134,7 +134,7 @@ func TestStdoutRedirect(t *testing.T) {
 
 func TestExecutePipelineTooFewSegments(t *testing.T) {
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	err := e.ExecutePipeline(Outputs{
 		Stdout: io.Discard,
@@ -162,7 +162,7 @@ func outputLines(text string) []string {
 func TestExecuteBuiltinStdoutLines(t *testing.T) {
 	var out bytes.Buffer
 	e := New(strings.NewReader(""))
-	state := repl.NewState()
+	state := session.NewState()
 
 	_, err := e.ExecuteBuiltin(Outputs{Stdout: &out, Stderr: io.Discard}, state, []string{"echo", "a", "b"})
 	if err != nil {

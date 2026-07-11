@@ -4,14 +4,14 @@ import (
 	"io"
 	"slices"
 
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 )
 
 // Context holds per-invocation I/O and REPL state for a builtin command.
 type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
-	State  *repl.State
+	State  *session.State
 }
 
 // Handler runs a builtin command. The bool is true when the shell should exit.

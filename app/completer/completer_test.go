@@ -5,7 +5,7 @@ import (
 
 	_ "github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -66,7 +66,7 @@ func TestApplyTabAction(t *testing.T) {
 }
 
 func TestCompleteCommand(t *testing.T) {
-	c := New(repl.NewState())
+	c := New(session.NewState())
 
 	tests := []struct {
 		buffer     string
@@ -158,7 +158,7 @@ func TestCompleteArgument(t *testing.T) {
 		},
 	}
 
-	c := New(repl.NewState())
+	c := New(session.NewState())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotBuffer, gotListings := c.CompleteArgument(tt.buffer, tt.candidates)
@@ -222,7 +222,7 @@ func TestBuildCompleterOptions(t *testing.T) {
 }
 
 func TestHandleTab(t *testing.T) {
-	c := New(repl.NewState())
+	c := New(session.NewState())
 	state := &terminal.TabState{}
 
 	got := c.HandleTab(state, "ech")

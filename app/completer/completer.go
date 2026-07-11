@@ -5,17 +5,17 @@ import (
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
 )
 
 // Completer orchestrates tab completion candidate sourcing and bash-style tab behavior.
 type Completer struct {
-	state *repl.State
+	state *session.State
 }
 
-// New returns a completer wired to the given REPL state.
-func New(state *repl.State) *Completer {
+// New returns a completer wired to the given shell session state.
+func New(state *session.State) *Completer {
 	return &Completer{state: state}
 }
 

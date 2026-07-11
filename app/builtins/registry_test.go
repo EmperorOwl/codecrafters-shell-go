@@ -7,7 +7,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
-	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/session"
 	"github.com/codecrafters-io/shell-starter-go/app/variables"
 	"github.com/google/go-cmp/cmp"
 )
@@ -128,7 +128,7 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-C", "/path/to/script", "git"},
 			ctx: &Context{
-				State: &repl.State{Completion: completion.NewRegistry()},
+				State: &session.State{Completion: completion.NewRegistry()},
 			},
 		},
 		{
@@ -136,28 +136,28 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-p", "git"},
 			ctx: &Context{
-				State: &repl.State{Completion: completion.NewRegistry()},
+				State: &session.State{Completion: completion.NewRegistry()},
 			},
 		},
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
 			ctx: &Context{
-				State: &repl.State{Jobs: jobs.NewTable()},
+				State: &session.State{Jobs: jobs.NewTable()},
 			},
 		},
 		{
 			name:        "history runs",
 			builtinName: "history",
 			ctx: &Context{
-				State: &repl.State{History: &history.List{}},
+				State: &session.State{History: &history.List{}},
 			},
 		},
 		{
 			name:        "declare runs",
 			builtinName: "declare",
 			ctx: &Context{
-				State: &repl.State{Variables: variables.NewStore()},
+				State: &session.State{Variables: variables.NewStore()},
 			},
 		},
 	}
