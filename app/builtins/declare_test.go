@@ -10,11 +10,12 @@ import (
 
 func TestDeclare(t *testing.T) {
 	tests := []struct {
-		name    string
-		setup   func(*variables.VariablesStore)
-		args    []string
-		wantOut string
-		wantErr string
+		name       string
+		setup      func(*variables.VariablesStore)
+		args       []string
+		wantOut    string
+		wantErr    string
+		wantValues map[string]string
 	}{
 		{
 			name:    "prints not found for -p",
@@ -26,16 +27,19 @@ func TestDeclare(t *testing.T) {
 			setup: func(store *variables.VariablesStore) {
 				store.Set("foo", "bar")
 			},
-			args:    []string{"-p", "foo"},
-			wantOut: `declare -- foo="bar"` + "\n",
+			args:       []string{"-p", "foo"},
+			wantOut:    `declare -- foo="bar"` + "\n",
+			wantValues: map[string]string{"foo": "bar"},
 		},
 		{
-			name: "stores assignment",
-			args: []string{"foo=bar"},
+			name:       "stores assignment",
+			args:       []string{"foo=bar"},
+			wantValues: map[string]string{"foo": "bar"},
 		},
 		{
-			name: "stores underscore assignment",
-			args: []string{"_FOO=bar"},
+			name:       "stores underscore assignment",
+			args:       []string{"_FOO=bar"},
+			wantValues: map[string]string{"_FOO": "bar"},
 		},
 		{
 			name:    "rejects digit at start",
@@ -47,7 +51,8 @@ func TestDeclare(t *testing.T) {
 			setup: func(store *variables.VariablesStore) {
 				store.Set("foo", "bar")
 			},
-			args: []string{"foo=bar2"},
+			args:       []string{"foo=bar2"},
+			wantValues: map[string]string{"foo": "bar2"},
 		},
 		{
 			name: "ignores bare declare",
@@ -73,15 +78,13 @@ func TestDeclare(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			Declare(&stdout, &stderr, tt.args, store)
 
-			if tt.wantErr == "" && tt.args != nil && len(tt.args) == 1 {
-				if name, value, ok := parseAssignment(tt.args[0]); ok && isValidIdentifier(name) {
-					got, exists := store.Get(name)
-					if !exists {
-						t.Fatalf("Get(%q) exists = false, want true", name)
-					}
-					if diff := cmp.Diff(value, got); diff != "" {
-						t.Errorf("Get(%q) value mismatch (-want +got):\n%s", name, diff)
-					}
+			for name, wantValue := range tt.wantValues {
+				got, exists := store.Get(name)
+				if !exists {
+					t.Fatalf("Get(%q) exists = false, want true", name)
+				}
+				if diff := cmp.Diff(wantValue, got); diff != "" {
+					t.Errorf("Get(%q) value mismatch (-want +got):\n%s", name, diff)
 				}
 			}
 
