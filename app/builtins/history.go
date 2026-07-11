@@ -40,7 +40,7 @@ func historyBuiltin(ctx *Context, args []string) (bool, error) {
 
 // History prints commands from the history list. A positive limit shows only
 // the last n entries; zero shows the full history.
-func History(out io.Writer, list *history.HistoryList, limit int) {
+func History(out io.Writer, list *history.List, limit int) {
 	var entries []history.Entry
 	if limit > 0 {
 		entries = list.ListLast(limit)

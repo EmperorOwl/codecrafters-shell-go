@@ -11,11 +11,11 @@ import (
 
 // State holds mutable shell state for the lifetime of the REPL loop.
 type State struct {
-	Jobs       *jobs.JobTable
-	History    *history.HistoryList
+	Jobs       *jobs.Table
+	History    *history.List
 	Histfile   string
-	Completion *completion.CompletionRegistry
-	Variables  *variables.VariablesStore
+	Completion *completion.Registry
+	Variables  *variables.Store
 }
 
 // NewState returns a fresh REPL state with an empty job table and completion registry.
@@ -25,10 +25,10 @@ func NewState() *State {
 	_ = list.AppendFromFile(histfile)
 
 	return &State{
-		Jobs:       &jobs.JobTable{},
+		Jobs:       jobs.NewTable(),
 		History:    list,
 		Histfile:   histfile,
-		Completion: completion.NewCompletionRegistry(),
-		Variables:  variables.NewVariablesStore(),
+		Completion: completion.NewRegistry(),
+		Variables:  variables.NewStore(),
 	}
 }

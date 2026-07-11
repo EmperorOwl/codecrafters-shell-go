@@ -20,7 +20,7 @@ func completeBuiltin(ctx *Context, args []string) (bool, error) {
 }
 
 // Complete handles the complete builtin.
-func Complete(stdout, stderr io.Writer, args []string, registry *completion.CompletionRegistry) {
+func Complete(stdout, stderr io.Writer, args []string, registry *completion.Registry) {
 	if len(args) == 0 || registry == nil {
 		return
 	}

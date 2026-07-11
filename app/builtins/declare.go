@@ -21,7 +21,7 @@ func declareBuiltin(ctx *Context, args []string) (bool, error) {
 }
 
 // Declare handles the declare builtin.
-func Declare(stdout, stderr io.Writer, args []string, store *variables.VariablesStore) {
+func Declare(stdout, stderr io.Writer, args []string, store *variables.Store) {
 	if len(args) == 0 || store == nil {
 		return
 	}

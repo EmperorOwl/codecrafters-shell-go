@@ -11,7 +11,7 @@ import (
 func TestDeclare(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(*variables.VariablesStore)
+		setup      func(*variables.Store)
 		args       []string
 		wantOut    string
 		wantErr    string
@@ -24,7 +24,7 @@ func TestDeclare(t *testing.T) {
 		},
 		{
 			name: "prints description for -p",
-			setup: func(store *variables.VariablesStore) {
+			setup: func(store *variables.Store) {
 				store.Set("foo", "bar")
 			},
 			args:       []string{"-p", "foo"},
@@ -48,7 +48,7 @@ func TestDeclare(t *testing.T) {
 		},
 		{
 			name: "overwrites existing variable",
-			setup: func(store *variables.VariablesStore) {
+			setup: func(store *variables.Store) {
 				store.Set("foo", "bar")
 			},
 			args:       []string{"foo=bar2"},
@@ -70,7 +70,7 @@ func TestDeclare(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := variables.NewVariablesStore()
+			store := variables.NewStore()
 			if tt.setup != nil {
 				tt.setup(store)
 			}

@@ -19,14 +19,19 @@ type Job struct {
 	Status  string
 }
 
-type JobTable struct {
+type Table struct {
 	mu   sync.Mutex
 	jobs []Job
 }
 
+// NewTable returns an empty job table.
+func NewTable() *Table {
+	return &Table{}
+}
+
 // nextJobNumberLocked returns the next job number to assign. The table must
 // already be locked. Empty table yields 1; otherwise max existing number + 1.
-func (t *JobTable) nextJobNumberLocked() int {
+func (t *Table) nextJobNumberLocked() int {
 	if len(t.jobs) == 0 {
 		return 1
 	}
@@ -40,7 +45,7 @@ func (t *JobTable) nextJobNumberLocked() int {
 }
 
 // Add registers a new background job and returns its job number.
-func (t *JobTable) Add(pid int, command string) int {
+func (t *Table) Add(pid int, command string) int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -56,7 +61,7 @@ func (t *JobTable) Add(pid int, command string) int {
 }
 
 // MarkDone marks the given job as finished and strips the trailing " &".
-func (t *JobTable) MarkDone(jobNumber int) {
+func (t *Table) MarkDone(jobNumber int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -71,7 +76,7 @@ func (t *JobTable) MarkDone(jobNumber int) {
 }
 
 // ReapDone removes finished jobs from the table and returns them.
-func (t *JobTable) ReapDone() []Job {
+func (t *Table) ReapDone() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -89,7 +94,7 @@ func (t *JobTable) ReapDone() []Job {
 }
 
 // List returns a snapshot of all jobs currently in the table.
-func (t *JobTable) List() []Job {
+func (t *Table) List() []Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

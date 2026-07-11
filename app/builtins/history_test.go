@@ -41,7 +41,7 @@ func TestHistory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			list := &history.HistoryList{}
+			list := &history.List{}
 			for _, command := range tt.commands {
 				list.Add(command)
 			}

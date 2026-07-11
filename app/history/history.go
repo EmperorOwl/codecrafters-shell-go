@@ -16,39 +16,39 @@ type Entry struct {
 	Command string
 }
 
-// HistoryList stores executed commands for the history builtin.
-type HistoryList struct {
+// List stores executed commands for the history builtin.
+type List struct {
 	mu           sync.Mutex
 	commands     []string
 	lastAppended int
 }
 
 // NewList returns an empty history list.
-func NewList() *HistoryList {
-	return &HistoryList{}
+func NewList() *List {
+	return &List{}
 }
 
 // Add records a command line in history.
-func (l *HistoryList) Add(command string) {
+func (l *List) Add(command string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.commands = append(l.commands, command)
 }
 
 // List returns a snapshot of all history entries with line numbers.
-func (l *HistoryList) List() []Entry {
+func (l *List) List() []Entry {
 	return l.listEntries(0)
 }
 
 // ListLast returns the last n history entries, preserving original line numbers.
 // If n is zero or greater than the number of entries, all entries are returned.
-func (l *HistoryList) ListLast(n int) []Entry {
+func (l *List) ListLast(n int) []Entry {
 	return l.listEntries(n)
 }
 
 // Previous returns the command stepsBack entries before the most recent one.
 // stepsBack 0 is the most recent command.
-func (l *HistoryList) Previous(stepsBack int) (string, bool) {
+func (l *List) Previous(stepsBack int) (string, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -60,14 +60,14 @@ func (l *HistoryList) Previous(stepsBack int) (string, bool) {
 
 // ReadFromFile appends commands from the given file to the history list.
 // Empty lines are skipped.
-func (l *HistoryList) ReadFromFile(path string) error {
+func (l *List) ReadFromFile(path string) error {
 	return l.appendLinesFromFile(path)
 }
 
 // AppendFromFile appends commands from path to the history list.
 // Empty paths and missing files are ignored. After appending,
 // lastAppended reflects the file contents.
-func (l *HistoryList) AppendFromFile(path string) error {
+func (l *List) AppendFromFile(path string) error {
 	if path == "" {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (l *HistoryList) AppendFromFile(path string) error {
 	return nil
 }
 
-func (l *HistoryList) appendLinesFromFile(path string) error {
+func (l *List) appendLinesFromFile(path string) error {
 	lines, err := files.ReadLines(path)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (l *HistoryList) appendLinesFromFile(path string) error {
 }
 
 // WriteToFile writes all commands in the history list to path.
-func (l *HistoryList) WriteToFile(path string) error {
+func (l *List) WriteToFile(path string) error {
 	l.mu.Lock()
 	commands := append([]string(nil), l.commands...)
 	l.mu.Unlock()
@@ -117,7 +117,7 @@ func (l *HistoryList) WriteToFile(path string) error {
 }
 
 // AppendToFile appends commands executed since the last append or write to path.
-func (l *HistoryList) AppendToFile(path string) error {
+func (l *List) AppendToFile(path string) error {
 	l.mu.Lock()
 	commands := append([]string(nil), l.commands[l.lastAppended:]...)
 	l.mu.Unlock()
@@ -132,7 +132,7 @@ func (l *HistoryList) AppendToFile(path string) error {
 	return nil
 }
 
-func (l *HistoryList) listEntries(limit int) []Entry {
+func (l *List) listEntries(limit int) []Entry {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

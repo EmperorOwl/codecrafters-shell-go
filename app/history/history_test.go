@@ -11,7 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestHistoryList_AddAndList(t *testing.T) {
+func TestList_AddAndList(t *testing.T) {
 	tests := []struct {
 		name     string
 		commands []string
@@ -41,7 +41,7 @@ func TestHistoryList_AddAndList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list HistoryList
+			var list List
 			for _, command := range tt.commands {
 				list.Add(command)
 			}
@@ -54,7 +54,7 @@ func TestHistoryList_AddAndList(t *testing.T) {
 	}
 }
 
-func TestHistoryList_ListLast(t *testing.T) {
+func TestList_ListLast(t *testing.T) {
 	tests := []struct {
 		name     string
 		commands []string
@@ -87,7 +87,7 @@ func TestHistoryList_ListLast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list HistoryList
+			var list List
 			for _, command := range tt.commands {
 				list.Add(command)
 			}
@@ -100,7 +100,7 @@ func TestHistoryList_ListLast(t *testing.T) {
 	}
 }
 
-func TestHistoryList_Previous(t *testing.T) {
+func TestList_Previous(t *testing.T) {
 	tests := []struct {
 		name      string
 		commands  []string
@@ -135,7 +135,7 @@ func TestHistoryList_Previous(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list HistoryList
+			var list List
 			for _, command := range tt.commands {
 				list.Add(command)
 			}
@@ -151,14 +151,14 @@ func TestHistoryList_Previous(t *testing.T) {
 	}
 }
 
-func TestHistoryList_AppendFromFile(t *testing.T) {
+func TestList_AppendFromFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 	content := "echo hello\necho world\n\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	var list HistoryList
+	var list List
 	if err := list.AppendFromFile(path); err != nil {
 		t.Fatalf("AppendFromFile() error = %v", err)
 	}
@@ -175,8 +175,8 @@ func TestHistoryList_AppendFromFile(t *testing.T) {
 	}
 }
 
-func TestHistoryList_AppendFromFileMissingFile(t *testing.T) {
-	var list HistoryList
+func TestList_AppendFromFileMissingFile(t *testing.T) {
+	var list List
 	if err := list.AppendFromFile(filepath.Join(t.TempDir(), "missing")); err != nil {
 		t.Fatalf("AppendFromFile() error = %v", err)
 	}
@@ -185,7 +185,7 @@ func TestHistoryList_AppendFromFileMissingFile(t *testing.T) {
 	}
 }
 
-func TestHistoryList_ReadFromFile(t *testing.T) {
+func TestList_ReadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/histfile"
 	content := "echo hello\necho world\n\n"
@@ -193,7 +193,7 @@ func TestHistoryList_ReadFromFile(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	var list HistoryList
+	var list List
 	list.Add("history -r " + path)
 	if err := list.ReadFromFile(path); err != nil {
 		t.Fatalf("ReadFromFile() error = %v", err)
@@ -212,9 +212,9 @@ func TestHistoryList_ReadFromFile(t *testing.T) {
 	}
 }
 
-func TestHistoryList_WriteToFile(t *testing.T) {
+func TestList_WriteToFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
-	var list HistoryList
+	var list List
 	list.Add("echo hello")
 	list.Add("echo world")
 	list.Add("history -w " + path)
@@ -234,14 +234,14 @@ func TestHistoryList_WriteToFile(t *testing.T) {
 	}
 }
 
-func TestHistoryList_AppendToFile(t *testing.T) {
+func TestList_AppendToFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 	initial := "echo initial_command_1\necho initial_command_2\n\n"
 	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	var list HistoryList
+	var list List
 	list.Add("echo new_command")
 	list.Add("history -a " + path)
 
@@ -265,10 +265,10 @@ func TestHistoryList_AppendToFile(t *testing.T) {
 	}
 }
 
-func TestHistoryList_AppendToFileOnlyNewCommands(t *testing.T) {
+func TestList_AppendToFileOnlyNewCommands(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 
-	var list HistoryList
+	var list List
 	list.Add("echo first")
 	list.Add("history -a " + path)
 	if err := list.AppendToFile(path); err != nil {
@@ -319,7 +319,7 @@ func TestWriteAll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list HistoryList
+			var list List
 			for _, command := range tt.commands {
 				list.Add(command)
 			}

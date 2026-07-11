@@ -180,7 +180,7 @@ func (s *Shell) writeReapedJobs() {
 	}
 }
 
-func expandParsedLine(parsed parser.Line, store *variables.VariablesStore) parser.Line {
+func expandParsedLine(parsed parser.Line, store *variables.Store) parser.Line {
 	for i, fields := range parsed.Commands {
 		parsed.Commands[i] = variables.ExpandFields(store, fields)
 	}

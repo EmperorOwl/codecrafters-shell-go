@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestVariablesStore_SetGet(t *testing.T) {
+func TestStore_SetGet(t *testing.T) {
 	tests := []struct {
 		name      string
 		varName   string
@@ -39,7 +39,7 @@ func TestVariablesStore_SetGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewVariablesStore()
+			store := NewStore()
 			if tt.value != "" {
 				store.Set(tt.varName, tt.value)
 			}

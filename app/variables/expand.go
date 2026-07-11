@@ -6,7 +6,7 @@ import (
 )
 
 // ExpandFields replaces $VAR references in each field using values from store.
-func ExpandFields(store *VariablesStore, fields []string) []string {
+func ExpandFields(store *Store, fields []string) []string {
 	if store == nil || len(fields) == 0 {
 		return fields
 	}
@@ -24,7 +24,7 @@ func ExpandFields(store *VariablesStore, fields []string) []string {
 
 // ExpandField replaces $VAR and ${VAR} references in field with values from store.
 // Undefined variables expand to an empty string.
-func ExpandField(store *VariablesStore, field string) string {
+func ExpandField(store *Store, field string) string {
 	if store == nil || !strings.Contains(field, "$") {
 		return field
 	}
@@ -43,7 +43,7 @@ func ExpandField(store *VariablesStore, field string) string {
 	return b.String()
 }
 
-func expandAt(store *VariablesStore, runes []rune, start int, b *strings.Builder) int {
+func expandAt(store *Store, runes []rune, start int, b *strings.Builder) int {
 	if start+1 >= len(runes) {
 		b.WriteRune('$')
 		return start
@@ -77,7 +77,7 @@ func expandAt(store *VariablesStore, runes []rune, start int, b *strings.Builder
 	return start + length
 }
 
-func writeExpansion(b *strings.Builder, store *VariablesStore, name string) {
+func writeExpansion(b *strings.Builder, store *Store, name string) {
 	value, ok := store.Get(name)
 	if ok {
 		b.WriteString(value)

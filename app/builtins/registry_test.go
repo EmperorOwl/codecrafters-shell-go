@@ -16,22 +16,22 @@ func noopBuiltin(ctx *Context, args []string) (bool, error) {
 	return false, nil
 }
 
-func TestBuiltinRegistry_Register(t *testing.T) {
+func TestRegistry_Register(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*BuiltinRegistry)
+		setup   func(*Registry)
 		command string
 		wantOK  bool
 	}{
 		{
 			name:    "registers command",
-			setup:   func(*BuiltinRegistry) {},
+			setup:   func(*Registry) {},
 			command: "echo",
 			wantOK:  true,
 		},
 		{
 			name: "idempotent register",
-			setup: func(r *BuiltinRegistry) {
+			setup: func(r *Registry) {
 				r.Register("echo", noopBuiltin)
 			},
 			command: "echo",
@@ -41,7 +41,7 @@ func TestBuiltinRegistry_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg := NewBuiltinRegistry()
+			reg := NewRegistry()
 			tt.setup(reg)
 			reg.Register(tt.command, noopBuiltin)
 
@@ -53,8 +53,8 @@ func TestBuiltinRegistry_Register(t *testing.T) {
 	}
 }
 
-func TestBuiltinRegistry_Names(t *testing.T) {
-	reg := NewBuiltinRegistry()
+func TestRegistry_Names(t *testing.T) {
+	reg := NewRegistry()
 	reg.Register("zebra", noopBuiltin)
 	reg.Register("alpha", noopBuiltin)
 
@@ -65,8 +65,8 @@ func TestBuiltinRegistry_Names(t *testing.T) {
 	}
 }
 
-func TestBuiltinRegistry_Run(t *testing.T) {
-	reg := NewBuiltinRegistry()
+func TestRegistry_Run(t *testing.T) {
+	reg := NewRegistry()
 	reg.Register("exit", exitBuiltin)
 
 	exitShell, err := reg.Run("exit", nil, &Context{})
@@ -128,7 +128,7 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-C", "/path/to/script", "git"},
 			ctx: &Context{
-				State: &repl.State{Completion: completion.NewCompletionRegistry()},
+				State: &repl.State{Completion: completion.NewRegistry()},
 			},
 		},
 		{
@@ -136,28 +136,28 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-p", "git"},
 			ctx: &Context{
-				State: &repl.State{Completion: completion.NewCompletionRegistry()},
+				State: &repl.State{Completion: completion.NewRegistry()},
 			},
 		},
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
 			ctx: &Context{
-				State: &repl.State{Jobs: &jobs.JobTable{}},
+				State: &repl.State{Jobs: jobs.NewTable()},
 			},
 		},
 		{
 			name:        "history runs",
 			builtinName: "history",
 			ctx: &Context{
-				State: &repl.State{History: &history.HistoryList{}},
+				State: &repl.State{History: &history.List{}},
 			},
 		},
 		{
 			name:        "declare runs",
 			builtinName: "declare",
 			ctx: &Context{
-				State: &repl.State{Variables: variables.NewVariablesStore()},
+				State: &repl.State{Variables: variables.NewStore()},
 			},
 		},
 	}

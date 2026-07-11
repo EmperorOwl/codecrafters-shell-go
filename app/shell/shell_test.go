@@ -62,24 +62,24 @@ func TestCommandNotFoundMessage(t *testing.T) {
 func TestWriteReapedJobs(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*jobs.JobTable)
+		setup     func(*jobs.Table)
 		wantLines []string
 	}{
 		{
 			name:      "no done jobs",
-			setup:     func(*jobs.JobTable) {},
+			setup:     func(*jobs.Table) {},
 			wantLines: nil,
 		},
 		{
 			name: "running job produces no output",
-			setup: func(jm *jobs.JobTable) {
+			setup: func(jm *jobs.Table) {
 				jm.Add(1, "sleep 10 &")
 			},
 			wantLines: nil,
 		},
 		{
 			name: "prints one done job",
-			setup: func(jm *jobs.JobTable) {
+			setup: func(jm *jobs.Table) {
 				jm.Add(1, "cat /path/to/fifo &")
 				jm.MarkDone(1)
 			},

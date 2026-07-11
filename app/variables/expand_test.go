@@ -10,14 +10,14 @@ import (
 func TestExpandField(t *testing.T) {
 	tests := []struct {
 		name  string
-		setup func(*VariablesStore)
+		setup func(*Store)
 		field string
 		want  string
 	}{
 		{name: "no expansion", field: "echo", want: "echo"},
 		{
 			name: "expands variable",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Variable_1", "Value_1")
 			},
 			field: "$Variable_1",
@@ -25,7 +25,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands second variable",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Variable_2", "Value2")
 			},
 			field: "$Variable_2",
@@ -33,7 +33,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands multiple variables",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Variable_1", "Value_1")
 				store.Set("Variable_2", "Value2")
 			},
@@ -42,7 +42,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands braced variable with suffix",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Var1", "foo")
 			},
 			field: "${Var1}end",
@@ -50,7 +50,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands multiple braced variables",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Var1", "foo")
 				store.Set("Var2", "bar")
 			},
@@ -59,7 +59,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands braced variable within word",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Item", "widget")
 			},
 			field: "stock_${Item}_id",
@@ -67,7 +67,7 @@ func TestExpandField(t *testing.T) {
 		},
 		{
 			name: "expands braced variable",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Foo1", "Bar2")
 			},
 			field: "${Foo1}",
@@ -78,7 +78,7 @@ func TestExpandField(t *testing.T) {
 		{name: "keeps suffix when braced variable is unset", field: "${missing}world", want: "world"},
 		{
 			name: "expands set variable with suffix",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("greeting", "hello")
 			},
 			field: "${greeting}world",
@@ -91,7 +91,7 @@ func TestExpandField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewVariablesStore()
+			store := NewStore()
 			if tt.setup != nil {
 				tt.setup(store)
 			}
@@ -107,13 +107,13 @@ func TestExpandField(t *testing.T) {
 func TestExpandFields(t *testing.T) {
 	tests := []struct {
 		name   string
-		setup  func(*VariablesStore)
+		setup  func(*Store)
 		fields []string
 		want   []string
 	}{
 		{
 			name: "expands simple variables",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Variable_1", "Value_1")
 				store.Set("Variable_2", "Value2")
 			},
@@ -122,7 +122,7 @@ func TestExpandFields(t *testing.T) {
 		},
 		{
 			name: "expands braced variables within words",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("Item", "widget")
 				store.Set("Foo1", "Bar2")
 			},
@@ -131,7 +131,7 @@ func TestExpandFields(t *testing.T) {
 		},
 		{
 			name: "drops empty args after unset expansion",
-			setup: func(store *VariablesStore) {
+			setup: func(store *Store) {
 				store.Set("existing", "existingsvalue")
 			},
 			fields: []string{"custom_exe_1234", "${missing1}end", "${existing}", "${missing2}"},
@@ -141,7 +141,7 @@ func TestExpandFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewVariablesStore()
+			store := NewStore()
 			if tt.setup != nil {
 				tt.setup(store)
 			}

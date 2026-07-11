@@ -66,7 +66,7 @@ func TestComplete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := completion.NewCompletionRegistry()
+			registry := completion.NewRegistry()
 			for command, scriptPath := range tt.initial {
 				registry.Register(command, scriptPath)
 			}

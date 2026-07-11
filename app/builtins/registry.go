@@ -17,27 +17,27 @@ type Context struct {
 // Handler runs a builtin command. The bool is true when the shell should exit.
 type Handler func(ctx *Context, args []string) (exit bool, err error)
 
-// BuiltinRegistry stores registered builtin command handlers.
-type BuiltinRegistry struct {
+// Registry stores registered builtin command handlers.
+type Registry struct {
 	handlers map[string]Handler
 }
 
-var defaultRegistry = NewBuiltinRegistry()
+var defaultRegistry = NewRegistry()
 
-// NewBuiltinRegistry returns an empty builtin registry.
-func NewBuiltinRegistry() *BuiltinRegistry {
-	return &BuiltinRegistry{
+// NewRegistry returns an empty builtin registry.
+func NewRegistry() *Registry {
+	return &Registry{
 		handlers: make(map[string]Handler),
 	}
 }
 
 // Register adds a builtin command handler to the registry.
-func (r *BuiltinRegistry) Register(name string, handler Handler) {
+func (r *Registry) Register(name string, handler Handler) {
 	r.handlers[name] = handler
 }
 
 // Run executes a registered builtin. The bool is true when the shell should exit.
-func (r *BuiltinRegistry) Run(name string, args []string, ctx *Context) (bool, error) {
+func (r *Registry) Run(name string, args []string, ctx *Context) (bool, error) {
 	handler, ok := r.handlers[name]
 	if !ok {
 		return false, nil
@@ -46,13 +46,13 @@ func (r *BuiltinRegistry) Run(name string, args []string, ctx *Context) (bool, e
 }
 
 // Is reports whether name is a registered builtin command.
-func (r *BuiltinRegistry) Is(name string) bool {
+func (r *Registry) Is(name string) bool {
 	_, ok := r.handlers[name]
 	return ok
 }
 
 // Names returns registered builtin names in sorted order.
-func (r *BuiltinRegistry) Names() []string {
+func (r *Registry) Names() []string {
 	names := make([]string, 0, len(r.handlers))
 	for name := range r.handlers {
 		names = append(names, name)

@@ -19,7 +19,7 @@ func jobsBuiltin(ctx *Context, args []string) (bool, error) {
 }
 
 // Jobs prints all jobs in the table, then reaps finished ones.
-func Jobs(out io.Writer, table *jobs.JobTable) {
+func Jobs(out io.Writer, table *jobs.Table) {
 	display := table.List()
 	table.ReapDone()
 	jobs.WriteAll(out, display)

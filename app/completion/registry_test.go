@@ -6,24 +6,24 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestCompletionRegistry_Register(t *testing.T) {
+func TestRegistry_Register(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(*CompletionRegistry)
+		setup      func(*Registry)
 		command    string
 		scriptPath string
 		wantPath   string
 	}{
 		{
 			name:       "registers script",
-			setup:      func(*CompletionRegistry) {},
+			setup:      func(*Registry) {},
 			command:    "git",
 			scriptPath: "/path/to/git-completer",
 			wantPath:   "/path/to/git-completer",
 		},
 		{
 			name: "overwrites existing script",
-			setup: func(r *CompletionRegistry) {
+			setup: func(r *Registry) {
 				r.Register("git", "/old/script")
 			},
 			command:    "git",
@@ -34,7 +34,7 @@ func TestCompletionRegistry_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := NewCompletionRegistry()
+			registry := NewRegistry()
 			tt.setup(registry)
 
 			registry.Register(tt.command, tt.scriptPath)
@@ -50,17 +50,17 @@ func TestCompletionRegistry_Register(t *testing.T) {
 	}
 }
 
-func TestCompletionRegistry_Unregister(t *testing.T) {
+func TestRegistry_Unregister(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*CompletionRegistry)
+		setup     func(*Registry)
 		command   string
 		wantFound bool
 		wantPath  string
 	}{
 		{
 			name: "removes registered script",
-			setup: func(r *CompletionRegistry) {
+			setup: func(r *Registry) {
 				r.Register("git", "/path/to/script")
 			},
 			command:   "git",
@@ -68,7 +68,7 @@ func TestCompletionRegistry_Unregister(t *testing.T) {
 		},
 		{
 			name:      "missing command is no-op",
-			setup:     func(*CompletionRegistry) {},
+			setup:     func(*Registry) {},
 			command:   "git",
 			wantFound: false,
 		},
@@ -76,7 +76,7 @@ func TestCompletionRegistry_Unregister(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := NewCompletionRegistry()
+			registry := NewRegistry()
 			tt.setup(registry)
 
 			registry.Unregister(tt.command)
@@ -97,23 +97,23 @@ func TestCompletionRegistry_Unregister(t *testing.T) {
 	}
 }
 
-func TestCompletionRegistry_Lookup(t *testing.T) {
+func TestRegistry_Lookup(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(*CompletionRegistry)
+		setup     func(*Registry)
 		command   string
 		wantFound bool
 		wantPath  string
 	}{
 		{
 			name:      "empty registry",
-			setup:     func(*CompletionRegistry) {},
+			setup:     func(*Registry) {},
 			command:   "git",
 			wantFound: false,
 		},
 		{
 			name: "returns registered script",
-			setup: func(r *CompletionRegistry) {
+			setup: func(r *Registry) {
 				r.Register("git", "/path/to/script")
 			},
 			command:   "git",
@@ -124,7 +124,7 @@ func TestCompletionRegistry_Lookup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := NewCompletionRegistry()
+			registry := NewRegistry()
 			tt.setup(registry)
 
 			gotPath, ok := registry.Lookup(tt.command)
