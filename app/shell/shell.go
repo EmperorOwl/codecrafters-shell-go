@@ -12,6 +12,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/parser"
 	"github.com/codecrafters-io/shell-starter-go/app/repl"
 	"github.com/codecrafters-io/shell-starter-go/app/terminal"
+	"github.com/codecrafters-io/shell-starter-go/app/variables"
 )
 
 // Shell is the top-level orchestrator for the interactive shell.
@@ -83,6 +84,7 @@ func (s *Shell) ExecuteLine(line string) (bool, error) {
 	s.state.History.Add(line)
 
 	parsed := parser.ParseLine(line)
+	parsed = expandParsedLine(parsed, s.state.Variables)
 	if parsed.Pipeline {
 		return s.executePipeline(parsed)
 	}
@@ -176,6 +178,13 @@ func (s *Shell) writeReapedJobs() {
 	for _, line := range jobs.FormatLines(s.state.Jobs.ReapDone()) {
 		s.terminal.WriteLine(line)
 	}
+}
+
+func expandParsedLine(parsed parser.Line, store *variables.VariablesStore) parser.Line {
+	for i, fields := range parsed.Commands {
+		parsed.Commands[i] = variables.ExpandFields(store, fields)
+	}
+	return parsed
 }
 
 func commandFound(fields []string) (notFound string, ok bool) {
