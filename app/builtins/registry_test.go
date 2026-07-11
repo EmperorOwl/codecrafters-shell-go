@@ -8,6 +8,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/codecrafters-io/shell-starter-go/app/repl"
+	"github.com/codecrafters-io/shell-starter-go/app/variables"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -155,7 +156,9 @@ func TestRun(t *testing.T) {
 		{
 			name:        "declare runs",
 			builtinName: "declare",
-			ctx:         &Context{},
+			ctx: &Context{
+				State: &repl.State{Variables: variables.NewVariablesStore()},
+			},
 		},
 	}
 

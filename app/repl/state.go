@@ -6,6 +6,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/completion"
 	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
+	"github.com/codecrafters-io/shell-starter-go/app/variables"
 )
 
 // State holds mutable shell state for the lifetime of the REPL loop.
@@ -14,6 +15,7 @@ type State struct {
 	History    *history.HistoryList
 	Histfile   string
 	Completion *completion.CompletionRegistry
+	Variables  *variables.VariablesStore
 }
 
 // NewState returns a fresh REPL state with an empty job table and completion registry.
@@ -27,5 +29,6 @@ func NewState() *State {
 		History:    list,
 		Histfile:   histfile,
 		Completion: completion.NewCompletionRegistry(),
+		Variables:  variables.NewVariablesStore(),
 	}
 }
