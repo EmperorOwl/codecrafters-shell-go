@@ -24,6 +24,7 @@ func TestType(t *testing.T) {
 		{name: "complete builtin", command: "complete", want: "complete is a shell builtin\n"},
 		{name: "jobs builtin", command: "jobs", want: "jobs is a shell builtin\n"},
 		{name: "history builtin", command: "history", want: "history is a shell builtin\n"},
+		{name: "declare builtin", command: "declare", want: "declare is a shell builtin\n"},
 		{name: "invalid command", command: "invalid_command", want: "invalid_command: not found\n"},
 	}
 

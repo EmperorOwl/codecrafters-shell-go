@@ -152,6 +152,11 @@ func TestRun(t *testing.T) {
 				State: &repl.State{History: &history.HistoryList{}},
 			},
 		},
+		{
+			name:        "declare runs",
+			builtinName: "declare",
+			ctx:         &Context{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -182,7 +187,7 @@ func TestIsBuiltin(t *testing.T) {
 }
 
 func TestNames(t *testing.T) {
-	want := []string{"cd", "complete", "echo", "exit", "history", "jobs", "pwd", "type"}
+	want := []string{"cd", "complete", "declare", "echo", "exit", "history", "jobs", "pwd", "type"}
 	got := Names()
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Names() mismatch (-want +got):\n%s", diff)
