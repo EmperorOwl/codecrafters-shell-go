@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"unicode"
 
 	"github.com/codecrafters-io/shell-starter-go/app/variables"
 )
@@ -42,29 +41,12 @@ func Declare(stdout, stderr io.Writer, args []string, store *variables.Variables
 	}
 
 	if name, value, ok := parseAssignment(args[0]); ok {
-		if !isValidIdentifier(name) {
+		if !variables.IsValidIdentifier(name) {
 			fmt.Fprintln(stderr, invalidIdentifierMessage(args[0]))
 			return
 		}
 		store.Set(name, value)
 	}
-}
-
-func isValidIdentifier(name string) bool {
-	if name == "" {
-		return false
-	}
-	for i, r := range name {
-		switch {
-		case i == 0:
-			if r != '_' && !unicode.IsLetter(r) {
-				return false
-			}
-		case r != '_' && !unicode.IsLetter(r) && !unicode.IsDigit(r):
-			return false
-		}
-	}
-	return true
 }
 
 func parseAssignment(arg string) (name, value string, ok bool) {

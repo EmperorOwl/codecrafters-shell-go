@@ -18,7 +18,7 @@ func ExpandFields(store *VariablesStore, fields []string) []string {
 	return expanded
 }
 
-// ExpandField replaces $VAR references in field with values from store.
+// ExpandField replaces $VAR and ${VAR} references in field with values from store.
 // Undefined variables are left unchanged.
 func ExpandField(store *VariablesStore, field string) string {
 	if store == nil || !strings.Contains(field, "$") {
@@ -33,28 +33,61 @@ func ExpandField(store *VariablesStore, field string) string {
 			b.WriteRune(runes[i])
 			continue
 		}
-		if i+1 >= len(runes) {
-			b.WriteRune('$')
-			continue
-		}
-
-		name, length := readVariableName(runes[i+1:])
-		if length == 0 {
-			b.WriteRune('$')
-			continue
-		}
-
-		value, ok := store.Get(name)
-		if ok {
-			b.WriteString(value)
-		} else {
-			b.WriteRune('$')
-			b.WriteString(name)
-		}
-		i += length
+		i = expandAt(store, runes, i, &b)
 	}
 
 	return b.String()
+}
+
+func expandAt(store *VariablesStore, runes []rune, start int, b *strings.Builder) int {
+	if start+1 >= len(runes) {
+		b.WriteRune('$')
+		return start
+	}
+
+	if runes[start+1] == '{' {
+		closeIdx := findClosingBrace(runes, start+2)
+		if closeIdx == -1 {
+			b.WriteRune('$')
+			return start
+		}
+
+		name := string(runes[start+2 : closeIdx])
+		literal := "${" + name + "}"
+		if IsValidIdentifier(name) {
+			writeExpansion(b, store, name, literal)
+		} else {
+			b.WriteString(literal)
+		}
+		return closeIdx
+	}
+
+	name, length := readVariableName(runes[start+1:])
+	if length == 0 {
+		b.WriteRune('$')
+		return start
+	}
+
+	writeExpansion(b, store, name, "$"+name)
+	return start + length
+}
+
+func writeExpansion(b *strings.Builder, store *VariablesStore, name, literal string) {
+	value, ok := store.Get(name)
+	if ok {
+		b.WriteString(value)
+		return
+	}
+	b.WriteString(literal)
+}
+
+func findClosingBrace(runes []rune, start int) int {
+	for i := start; i < len(runes); i++ {
+		if runes[i] == '}' {
+			return i
+		}
+	}
+	return -1
 }
 
 func readVariableName(runes []rune) (string, int) {
