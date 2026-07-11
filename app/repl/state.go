@@ -20,7 +20,7 @@ type State struct {
 func NewState() *State {
 	histfile := os.Getenv("HISTFILE")
 	list := history.NewList()
-	_ = list.LoadHistfile(histfile)
+	_ = list.AppendFromFile(histfile)
 
 	return &State{
 		Jobs:       &jobs.JobTable{},

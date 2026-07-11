@@ -64,9 +64,10 @@ func (l *HistoryList) ReadFromFile(path string) error {
 	return l.appendLinesFromFile(path)
 }
 
-// LoadHistfile loads commands from path into the history list on startup.
-// Missing files are ignored. After loading, lastAppended reflects on-disk state.
-func (l *HistoryList) LoadHistfile(path string) error {
+// AppendFromFile appends commands from path to the history list.
+// Empty paths and missing files are ignored. After appending,
+// lastAppended reflects the file contents.
+func (l *HistoryList) AppendFromFile(path string) error {
 	if path == "" {
 		return nil
 	}

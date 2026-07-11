@@ -151,7 +151,7 @@ func TestHistoryList_Previous(t *testing.T) {
 	}
 }
 
-func TestHistoryList_LoadHistfile(t *testing.T) {
+func TestHistoryList_AppendFromFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 	content := "echo hello\necho world\n\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -159,8 +159,8 @@ func TestHistoryList_LoadHistfile(t *testing.T) {
 	}
 
 	var list HistoryList
-	if err := list.LoadHistfile(path); err != nil {
-		t.Fatalf("LoadHistfile() error = %v", err)
+	if err := list.AppendFromFile(path); err != nil {
+		t.Fatalf("AppendFromFile() error = %v", err)
 	}
 	list.Add("history")
 
@@ -171,17 +171,17 @@ func TestHistoryList_LoadHistfile(t *testing.T) {
 		{Number: 3, Command: "history"},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("LoadHistfile() history mismatch (-want +got):\n%s", diff)
+		t.Errorf("AppendFromFile() history mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestHistoryList_LoadHistfileMissingFile(t *testing.T) {
+func TestHistoryList_AppendFromFileMissingFile(t *testing.T) {
 	var list HistoryList
-	if err := list.LoadHistfile(filepath.Join(t.TempDir(), "missing")); err != nil {
-		t.Fatalf("LoadHistfile() error = %v", err)
+	if err := list.AppendFromFile(filepath.Join(t.TempDir(), "missing")); err != nil {
+		t.Fatalf("AppendFromFile() error = %v", err)
 	}
 	if got := list.List(); len(got) != 0 {
-		t.Fatalf("LoadHistfile() history = %v, want empty", got)
+		t.Fatalf("AppendFromFile() history = %v, want empty", got)
 	}
 }
 

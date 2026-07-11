@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestNewStateLoadsHistfile(t *testing.T) {
+func TestNewStateAppendsFromHistfile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
 	content := "echo hello\necho world\n\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
