@@ -11,15 +11,19 @@ func ExpandFields(store *VariablesStore, fields []string) []string {
 		return fields
 	}
 
-	expanded := make([]string, len(fields))
-	for i, field := range fields {
-		expanded[i] = ExpandField(store, field)
+	expanded := make([]string, 0, len(fields))
+	for _, field := range fields {
+		value := ExpandField(store, field)
+		if value == "" {
+			continue
+		}
+		expanded = append(expanded, value)
 	}
 	return expanded
 }
 
 // ExpandField replaces $VAR and ${VAR} references in field with values from store.
-// Undefined variables are left unchanged.
+// Undefined variables expand to an empty string.
 func ExpandField(store *VariablesStore, field string) string {
 	if store == nil || !strings.Contains(field, "$") {
 		return field
@@ -53,11 +57,12 @@ func expandAt(store *VariablesStore, runes []rune, start int, b *strings.Builder
 		}
 
 		name := string(runes[start+2 : closeIdx])
-		literal := "${" + name + "}"
 		if IsValidIdentifier(name) {
-			writeExpansion(b, store, name, literal)
+			writeExpansion(b, store, name)
 		} else {
-			b.WriteString(literal)
+			b.WriteString("${")
+			b.WriteString(name)
+			b.WriteRune('}')
 		}
 		return closeIdx
 	}
@@ -68,17 +73,15 @@ func expandAt(store *VariablesStore, runes []rune, start int, b *strings.Builder
 		return start
 	}
 
-	writeExpansion(b, store, name, "$"+name)
+	writeExpansion(b, store, name)
 	return start + length
 }
 
-func writeExpansion(b *strings.Builder, store *VariablesStore, name, literal string) {
+func writeExpansion(b *strings.Builder, store *VariablesStore, name string) {
 	value, ok := store.Get(name)
 	if ok {
 		b.WriteString(value)
-		return
 	}
-	b.WriteString(literal)
 }
 
 func findClosingBrace(runes []rune, start int) int {
