@@ -2,7 +2,6 @@ package builtins
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/history"
@@ -58,11 +57,7 @@ func TestHistory(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			historyBuiltin(&stdout, &stderr, tt.args, list)
 
-			want := ""
-			if len(tt.wantLines) > 0 {
-				want = strings.Join(tt.wantLines, "\n") + "\n"
-			}
-			if diff := cmp.Diff(want, stdout.String()); diff != "" {
+			if diff := cmp.Diff(wantStdout(tt.wantLines), stdout.String()); diff != "" {
 				t.Errorf("historyBuiltin(%v) stdout mismatch (-want +got):\n%s", tt.args, diff)
 			}
 		})

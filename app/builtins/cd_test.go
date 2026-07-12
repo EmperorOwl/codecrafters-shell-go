@@ -12,10 +12,10 @@ import (
 )
 
 type cdFixture struct {
-	startDir   string
-	directory  string
-	wantDir    string
-	wantErr string
+	startDir  string
+	directory string
+	wantDir   string
+	wantErr   string
 }
 
 func TestCd(t *testing.T) {
@@ -94,10 +94,10 @@ func TestCd(t *testing.T) {
 			name: "missing relative directory",
 			setup: func(t *testing.T, base string) cdFixture {
 				return cdFixture{
-					startDir:   base,
-					directory:  "./does_not_exist",
-					wantDir:    base,
-					wantErr: "cd: ./does_not_exist: No such file or directory\n",
+					startDir:  base,
+					directory: "./does_not_exist",
+					wantDir:   base,
+					wantErr:   "cd: ./does_not_exist: No such file or directory\n",
 				}
 			},
 		},
@@ -106,10 +106,10 @@ func TestCd(t *testing.T) {
 			setup: func(t *testing.T, base string) cdFixture {
 				invalidAbs := invalidAbsolutePath()
 				return cdFixture{
-					startDir:   base,
-					directory:  invalidAbs,
-					wantDir:    base,
-					wantErr: fmt.Sprintf("cd: %s: No such file or directory\n", invalidAbs),
+					startDir:  base,
+					directory: invalidAbs,
+					wantDir:   base,
+					wantErr:   fmt.Sprintf("cd: %s: No such file or directory\n", invalidAbs),
 				}
 			},
 		},

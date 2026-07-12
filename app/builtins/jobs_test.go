@@ -2,7 +2,6 @@ package builtins
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
@@ -12,10 +11,10 @@ import (
 
 func TestJobs(t *testing.T) {
 	tests := []struct {
-		name          string
-		setup         func(*jobs.Table)
-		wantLines     []string
-		wantRemaining []jobs.Job
+		name      string
+		setup     func(*jobs.Table)
+		wantLines []string
+		wantJobs  []jobs.Job
 	}{
 		{
 			name: "no jobs",
@@ -28,7 +27,7 @@ func TestJobs(t *testing.T) {
 			wantLines: []string{
 				"[1]+  Running                 sleep 10 &",
 			},
-			wantRemaining: []jobs.Job{{
+			wantJobs: []jobs.Job{{
 				Number:  1,
 				PID:     1,
 				Command: "sleep 10 &",
@@ -57,17 +56,14 @@ func TestJobs(t *testing.T) {
 			var stdout bytes.Buffer
 			jobsBuiltin(&stdout, table)
 
-			want := ""
-			if len(tt.wantLines) > 0 {
-				want = strings.Join(tt.wantLines, "\n") + "\n"
-			}
-			if diff := cmp.Diff(want, stdout.String()); diff != "" {
+			if diff := cmp.Diff(wantStdout(tt.wantLines), stdout.String()); diff != "" {
 				t.Errorf("jobsBuiltin() stdout mismatch (-want +got):\n%s", diff)
 			}
 
-			remaining := table.List()
-			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("jobsBuiltin() remaining jobs mismatch (-want +got):\n%s", diff)
+			if tt.wantJobs != nil {
+				if diff := cmp.Diff(tt.wantJobs, table.List(), cmpopts.EquateEmpty()); diff != "" {
+					t.Errorf("jobsBuiltin() remaining jobs mismatch (-want +got):\n%s", diff)
+				}
 			}
 		})
 	}

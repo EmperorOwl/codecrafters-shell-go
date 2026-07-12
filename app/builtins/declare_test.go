@@ -10,11 +10,11 @@ import (
 
 func TestDeclare(t *testing.T) {
 	tests := []struct {
-		name       string
-		setup      func(*variables.Store)
-		args       []string
-		wantOut    string
-		wantErr    string
+		name      string
+		setup     func(*variables.Store)
+		args      []string
+		wantOut   string
+		wantErr   string
 		wantStore map[string]string
 	}{
 		{
@@ -27,18 +27,18 @@ func TestDeclare(t *testing.T) {
 			setup: func(store *variables.Store) {
 				store.Set("foo", "bar")
 			},
-			args:       []string{"-p", "foo"},
-			wantOut:    `declare -- foo="bar"` + "\n",
+			args:      []string{"-p", "foo"},
+			wantOut:   `declare -- foo="bar"` + "\n",
 			wantStore: map[string]string{"foo": "bar"},
 		},
 		{
-			name:       "stores assignment",
-			args:       []string{"foo=bar"},
+			name:      "stores assignment",
+			args:      []string{"foo=bar"},
 			wantStore: map[string]string{"foo": "bar"},
 		},
 		{
-			name:       "stores underscore assignment",
-			args:       []string{"_FOO=bar"},
+			name:      "stores underscore assignment",
+			args:      []string{"_FOO=bar"},
 			wantStore: map[string]string{"_FOO": "bar"},
 		},
 		{
@@ -51,7 +51,7 @@ func TestDeclare(t *testing.T) {
 			setup: func(store *variables.Store) {
 				store.Set("foo", "bar")
 			},
-			args:       []string{"foo=bar2"},
+			args:      []string{"foo=bar2"},
 			wantStore: map[string]string{"foo": "bar2"},
 		},
 		{
