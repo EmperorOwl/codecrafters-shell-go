@@ -9,45 +9,45 @@ import (
 )
 
 func init() {
-	register("history", historyBuiltin)
+	register("history", historyHandler)
 }
 
-func historyBuiltin(ctx *Context, args []string) (bool, error) {
+func historyHandler(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
 	}
-	if len(args) >= 2 && args[0] == "-r" {
-		if err := ctx.State.History.ReadFromFile(args[1]); err != nil {
-			fmt.Fprintf(ctx.Stderr, "history: %v\n", err)
-		}
-		return false, nil
-	}
-	if len(args) >= 2 && args[0] == "-w" {
-		if err := ctx.State.History.WriteToFile(args[1]); err != nil {
-			fmt.Fprintf(ctx.Stderr, "history: %v\n", err)
-		}
-		return false, nil
-	}
-	if len(args) >= 2 && args[0] == "-a" {
-		if err := ctx.State.History.AppendToFile(args[1]); err != nil {
-			fmt.Fprintf(ctx.Stderr, "history: %v\n", err)
-		}
-		return false, nil
-	}
-	History(ctx.Stdout, ctx.State.History, parseHistoryLimit(args))
+	historyBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.History)
 	return false, nil
 }
 
-// History prints commands from the history list. A positive limit shows only
-// the last n entries; zero shows the full history.
-func History(out io.Writer, list *history.List, limit int) {
+func historyBuiltin(stdout, stderr io.Writer, args []string, list *history.List) {
+	if len(args) >= 2 && args[0] == "-r" {
+		if err := list.ReadFromFile(args[1]); err != nil {
+			fmt.Fprintf(stderr, "history: %v\n", err)
+		}
+		return
+	}
+	if len(args) >= 2 && args[0] == "-w" {
+		if err := list.WriteToFile(args[1]); err != nil {
+			fmt.Fprintf(stderr, "history: %v\n", err)
+		}
+		return
+	}
+	if len(args) >= 2 && args[0] == "-a" {
+		if err := list.AppendToFile(args[1]); err != nil {
+			fmt.Fprintf(stderr, "history: %v\n", err)
+		}
+		return
+	}
+
+	limit := parseHistoryLimit(args)
 	var entries []history.Entry
 	if limit > 0 {
 		entries = list.ListLast(limit)
 	} else {
 		entries = list.List()
 	}
-	history.WriteAll(out, entries)
+	history.WriteAll(stdout, entries)
 }
 
 func parseHistoryLimit(args []string) int {

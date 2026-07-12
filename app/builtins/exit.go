@@ -1,9 +1,9 @@
 package builtins
 
 func init() {
-	register("exit", exitBuiltin)
+	register("exit", exitHandler)
 }
 
-func exitBuiltin(ctx *Context, args []string) (bool, error) {
+func exitHandler(ctx *Context, args []string) (bool, error) {
 	return true, nil
 }

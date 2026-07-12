@@ -11,46 +11,59 @@ import (
 
 func TestHistory(t *testing.T) {
 	tests := []struct {
-		name     string
-		commands []string
-		limit    int
-		want     string
+		name      string
+		setup     func(*history.List)
+		args      []string
+		wantLines []string
 	}{
 		{
 			name: "empty history",
 		},
 		{
-			name:     "lists previous commands",
-			commands: []string{"previous_command_1", "previous_command_2", "history"},
-			want: strings.Join([]string{
+			name: "lists previous commands",
+			setup: func(list *history.List) {
+				list.Add("previous_command_1")
+				list.Add("previous_command_2")
+				list.Add("history")
+			},
+			wantLines: []string{
 				"    1  previous_command_1",
 				"    2  previous_command_2",
 				"    3  history",
-			}, "\n") + "\n",
+			},
 		},
 		{
-			name:     "limits to last two commands",
-			commands: []string{"echo hello", "echo world", "invalid_command", "history 2"},
-			limit:    2,
-			want: strings.Join([]string{
+			name: "limits to last two commands",
+			setup: func(list *history.List) {
+				list.Add("echo hello")
+				list.Add("echo world")
+				list.Add("invalid_command")
+				list.Add("history 2")
+			},
+			args: []string{"2"},
+			wantLines: []string{
 				"    3  invalid_command",
 				"    4  history 2",
-			}, "\n") + "\n",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			list := &history.List{}
-			for _, command := range tt.commands {
-				list.Add(command)
+			list := history.NewList()
+			if tt.setup != nil {
+				tt.setup(list)
 			}
 
-			var out bytes.Buffer
-			History(&out, list, tt.limit)
+			var stdout, stderr bytes.Buffer
+			historyBuiltin(&stdout, &stderr, tt.args, list)
 
-			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
-				t.Errorf("History() output mismatch (-want +got):\n%s", diff)
+			want := ""
+			if len(tt.wantLines) > 0 {
+				want = strings.Join(tt.wantLines, "\n") + "\n"
+			}
+			if diff := cmp.Diff(want, stdout.String()); diff != "" {
+				t.Errorf("historyBuiltin(%v) stdout mismatch (-want +got):\n%s", tt.args, diff)
 			}
 		})
 	}

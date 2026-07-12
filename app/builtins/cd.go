@@ -7,30 +7,31 @@ import (
 )
 
 func init() {
-	register("cd", cdBuiltin)
+	register("cd", cdHandler)
 }
 
-func cdBuiltin(ctx *Context, args []string) (bool, error) {
+func cdHandler(ctx *Context, args []string) (bool, error) {
 	directory := ""
 	if len(args) > 0 {
 		directory = args[0]
 	}
-	Cd(ctx.Stderr, directory)
+	cdBuiltin(ctx.Stderr, directory)
 	return false, nil
 }
 
-func Cd(stderr io.Writer, directory string) {
+func cdBuiltin(stderr io.Writer, directory string) {
 	if directory == "" {
 		return
 	}
 
 	target := directory
 	if directory == "~" {
-		target = os.Getenv("HOME")
-	}
-	if target == "" {
-		fmt.Fprintln(stderr, cdErrorMessage(directory))
-		return
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintln(stderr, cdErrorMessage(directory))
+			return
+		}
+		target = home
 	}
 	if err := os.Chdir(target); err != nil {
 		fmt.Fprintln(stderr, cdErrorMessage(directory))

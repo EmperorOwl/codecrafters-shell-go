@@ -7,20 +7,19 @@ import (
 )
 
 func init() {
-	register("jobs", jobsBuiltin)
+	register("jobs", jobsHandler)
 }
 
-func jobsBuiltin(ctx *Context, args []string) (bool, error) {
+func jobsHandler(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
 	}
-	Jobs(ctx.Stdout, ctx.State.Jobs)
+	jobsBuiltin(ctx.Stdout, ctx.State.Jobs)
 	return false, nil
 }
 
-// Jobs prints all jobs in the table, then reaps finished ones.
-func Jobs(out io.Writer, table *jobs.Table) {
+func jobsBuiltin(stdout io.Writer, table *jobs.Table) {
 	display := table.List()
 	table.ReapDone()
-	jobs.WriteAll(out, display)
+	jobs.WriteAll(stdout, display)
 }

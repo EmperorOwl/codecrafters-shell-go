@@ -14,26 +14,26 @@ func TestType(t *testing.T) {
 	tests := []struct {
 		name    string
 		command string
-		want    string
+		wantOut string
 	}{
-		{name: "echo builtin", command: "echo", want: "echo is a shell builtin\n"},
-		{name: "exit builtin", command: "exit", want: "exit is a shell builtin\n"},
-		{name: "type builtin", command: "type", want: "type is a shell builtin\n"},
-		{name: "pwd builtin", command: "pwd", want: "pwd is a shell builtin\n"},
-		{name: "cd builtin", command: "cd", want: "cd is a shell builtin\n"},
-		{name: "complete builtin", command: "complete", want: "complete is a shell builtin\n"},
-		{name: "jobs builtin", command: "jobs", want: "jobs is a shell builtin\n"},
-		{name: "history builtin", command: "history", want: "history is a shell builtin\n"},
-		{name: "declare builtin", command: "declare", want: "declare is a shell builtin\n"},
-		{name: "invalid command", command: "invalid_command", want: "invalid_command: not found\n"},
+		{name: "echo builtin", command: "echo", wantOut: "echo is a shell builtin\n"},
+		{name: "exit builtin", command: "exit", wantOut: "exit is a shell builtin\n"},
+		{name: "type builtin", command: "type", wantOut: "type is a shell builtin\n"},
+		{name: "pwd builtin", command: "pwd", wantOut: "pwd is a shell builtin\n"},
+		{name: "cd builtin", command: "cd", wantOut: "cd is a shell builtin\n"},
+		{name: "complete builtin", command: "complete", wantOut: "complete is a shell builtin\n"},
+		{name: "jobs builtin", command: "jobs", wantOut: "jobs is a shell builtin\n"},
+		{name: "history builtin", command: "history", wantOut: "history is a shell builtin\n"},
+		{name: "declare builtin", command: "declare", wantOut: "declare is a shell builtin\n"},
+		{name: "invalid command", command: "invalid_command", wantOut: "invalid_command: not found\n"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var out bytes.Buffer
-			Type(&out, tt.command)
-			if diff := cmp.Diff(tt.want, out.String()); diff != "" {
-				t.Errorf("Type() output mismatch (-want +got):\n%s", diff)
+			var stdout bytes.Buffer
+			typeBuiltin(&stdout, tt.command)
+			if diff := cmp.Diff(tt.wantOut, stdout.String()); diff != "" {
+				t.Errorf("typeBuiltin(%v) stdout mismatch (-want +got):\n%s", tt.command, diff)
 			}
 		})
 	}
@@ -55,11 +55,11 @@ func TestType(t *testing.T) {
 		}
 		t.Setenv("PATH", dir)
 
-		var out bytes.Buffer
-		Type(&out, command)
+		var stdout bytes.Buffer
+		typeBuiltin(&stdout, command)
 		want := command + " is " + executable + "\n"
-		if diff := cmp.Diff(want, out.String()); diff != "" {
-			t.Errorf("Type() output mismatch (-want +got):\n%s", diff)
+		if diff := cmp.Diff(want, stdout.String()); diff != "" {
+			t.Errorf("typeBuiltin(%q) stdout mismatch (-want +got):\n%s", command, diff)
 		}
 	})
 }

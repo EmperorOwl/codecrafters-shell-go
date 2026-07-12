@@ -14,10 +14,21 @@ func TestPwd(t *testing.T) {
 		t.Fatalf("Getwd() error = %v", err)
 	}
 
-	var out bytes.Buffer
-	Pwd(&out)
-	want := cwd + "\n"
-	if diff := cmp.Diff(want, out.String()); diff != "" {
-		t.Errorf("Pwd() output mismatch (-want +got):\n%s", diff)
+	tests := []struct {
+		name    string
+		wantOut string
+	}{
+		{name: "prints working directory", wantOut: cwd + "\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			pwdBuiltin(&stdout)
+
+			if diff := cmp.Diff(tt.wantOut, stdout.String()); diff != "" {
+				t.Errorf("pwdBuiltin() stdout mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }

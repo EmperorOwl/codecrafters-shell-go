@@ -8,19 +8,18 @@ import (
 )
 
 func init() {
-	register("complete", completeBuiltin)
+	register("complete", completeHandler)
 }
 
-func completeBuiltin(ctx *Context, args []string) (bool, error) {
+func completeHandler(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
 	}
-	Complete(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
+	completeBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
 	return false, nil
 }
 
-// Complete handles the complete builtin.
-func Complete(stdout, stderr io.Writer, args []string, registry *completion.Registry) {
+func completeBuiltin(stdout, stderr io.Writer, args []string, registry *completion.Registry) {
 	if len(args) == 0 || registry == nil {
 		return
 	}

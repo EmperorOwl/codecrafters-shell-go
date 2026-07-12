@@ -8,26 +8,38 @@ import (
 )
 
 func init() {
-	register("type", typeBuiltin)
+	register("type", typeHandler)
 }
 
-func typeBuiltin(ctx *Context, args []string) (bool, error) {
+func typeHandler(ctx *Context, args []string) (bool, error) {
 	target := ""
 	if len(args) > 0 {
 		target = args[0]
 	}
-	Type(ctx.Stdout, target)
+	typeBuiltin(ctx.Stdout, target)
 	return false, nil
 }
 
-func Type(out io.Writer, command string) {
+func typeBuiltin(stdout io.Writer, command string) {
 	if IsBuiltin(command) {
-		fmt.Fprintln(out, command+" is a shell builtin")
+		fmt.Fprintln(stdout, shellBuiltinMessage(command))
 		return
 	}
 	if path, ok := external.FindExecutableInPath(command); ok {
-		fmt.Fprintln(out, command+" is "+path)
+		fmt.Fprintln(stdout, executableMessage(command, path))
 		return
 	}
-	fmt.Fprintln(out, command+": not found")
+	fmt.Fprintln(stdout, commandNotFoundMessage(command))
+}
+
+func shellBuiltinMessage(command string) string {
+	return command + " is a shell builtin"
+}
+
+func executableMessage(command, path string) string {
+	return command + " is " + path
+}
+
+func commandNotFoundMessage(command string) string {
+	return command + ": not found"
 }

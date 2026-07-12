@@ -22,3 +22,12 @@ func (s *Store) Get(name string) (string, bool) {
 	value, ok := s.values[name]
 	return value, ok
 }
+
+// Entries returns a copy of all stored variables.
+func (s *Store) Entries() map[string]string {
+	entries := make(map[string]string, len(s.values))
+	for name, value := range s.values {
+		entries[name] = value
+	}
+	return entries
+}

@@ -7,14 +7,14 @@ import (
 )
 
 func init() {
-	register("echo", echoBuiltin)
+	register("echo", echoHandler)
 }
 
-func echoBuiltin(ctx *Context, args []string) (bool, error) {
-	Echo(ctx.Stdout, args)
+func echoHandler(ctx *Context, args []string) (bool, error) {
+	echoBuiltin(ctx.Stdout, args)
 	return false, nil
 }
 
-func Echo(out io.Writer, args []string) {
-	fmt.Fprintln(out, strings.Join(args, " "))
+func echoBuiltin(stdout io.Writer, args []string) {
+	fmt.Fprintln(stdout, strings.Join(args, " "))
 }

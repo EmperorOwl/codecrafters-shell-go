@@ -27,3 +27,12 @@ func (r *Registry) Lookup(command string) (string, bool) {
 	scriptPath, ok := r.scripts[command]
 	return scriptPath, ok
 }
+
+// Entries returns a copy of all registered completions.
+func (r *Registry) Entries() map[string]string {
+	entries := make(map[string]string, len(r.scripts))
+	for command, scriptPath := range r.scripts {
+		entries[command] = scriptPath
+	}
+	return entries
+}

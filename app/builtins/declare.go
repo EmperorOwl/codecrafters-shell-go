@@ -9,19 +9,18 @@ import (
 )
 
 func init() {
-	register("declare", declareBuiltin)
+	register("declare", declareHandler)
 }
 
-func declareBuiltin(ctx *Context, args []string) (bool, error) {
+func declareHandler(ctx *Context, args []string) (bool, error) {
 	if ctx.State == nil {
 		return false, nil
 	}
-	Declare(ctx.Stdout, ctx.Stderr, args, ctx.State.Variables)
+	declareBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.Variables)
 	return false, nil
 }
 
-// Declare handles the declare builtin.
-func Declare(stdout, stderr io.Writer, args []string, store *variables.Store) {
+func declareBuiltin(stdout, stderr io.Writer, args []string, store *variables.Store) {
 	if len(args) == 0 || store == nil {
 		return
 	}

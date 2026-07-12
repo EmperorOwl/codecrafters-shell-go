@@ -67,7 +67,7 @@ func TestRegistry_Names(t *testing.T) {
 
 func TestRegistry_Run(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register("exit", exitBuiltin)
+	reg.Register("exit", exitHandler)
 
 	exitShell, err := reg.Run("exit", nil, &Context{})
 	if err != nil {
@@ -164,10 +164,10 @@ func TestRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var out bytes.Buffer
-			var errOut bytes.Buffer
-			tt.ctx.Stdout = &out
-			tt.ctx.Stderr = &errOut
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			tt.ctx.Stdout = &stdout
+			tt.ctx.Stderr = &stderr
 
 			exitShell, err := Run(tt.builtinName, tt.args, tt.ctx)
 			if err != nil {

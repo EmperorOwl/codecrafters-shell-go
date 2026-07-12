@@ -18,8 +18,7 @@ func TestJobs(t *testing.T) {
 		wantRemaining []jobs.Job
 	}{
 		{
-			name:  "no jobs",
-			setup: func(*jobs.Table) {},
+			name: "no jobs",
 		},
 		{
 			name: "one running job",
@@ -50,23 +49,25 @@ func TestJobs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table jobs.Table
-			tt.setup(&table)
+			table := jobs.NewTable()
+			if tt.setup != nil {
+				tt.setup(table)
+			}
 
-			var out bytes.Buffer
-			Jobs(&out, &table)
+			var stdout bytes.Buffer
+			jobsBuiltin(&stdout, table)
 
 			want := ""
 			if len(tt.wantLines) > 0 {
 				want = strings.Join(tt.wantLines, "\n") + "\n"
 			}
-			if diff := cmp.Diff(want, out.String()); diff != "" {
-				t.Errorf("Jobs() output mismatch (-want +got):\n%s", diff)
+			if diff := cmp.Diff(want, stdout.String()); diff != "" {
+				t.Errorf("jobsBuiltin() stdout mismatch (-want +got):\n%s", diff)
 			}
 
 			remaining := table.List()
 			if diff := cmp.Diff(tt.wantRemaining, remaining, cmpopts.EquateEmpty()); diff != "" {
-				t.Errorf("Jobs() remaining jobs mismatch (-want +got):\n%s", diff)
+				t.Errorf("jobsBuiltin() remaining jobs mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
