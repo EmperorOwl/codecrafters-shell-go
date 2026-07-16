@@ -31,10 +31,10 @@ func completeBuiltin(stdout, stderr io.Writer, args []string, registry *completi
 		}
 		command := args[1]
 		if scriptPath, ok := registry.Lookup(command); ok {
-			fmt.Fprintln(stdout, registeredSpecMessage(scriptPath, command))
+			fmt.Fprintln(stdout, completeRegisteredSpecMessage(scriptPath, command))
 			return
 		}
-		fmt.Fprintln(stderr, noCompletionSpecMessage(command))
+		fmt.Fprintln(stderr, completeNoSpecMessage(command))
 	case "-C":
 		if len(args) < 3 {
 			return
@@ -48,10 +48,10 @@ func completeBuiltin(stdout, stderr io.Writer, args []string, registry *completi
 	}
 }
 
-func noCompletionSpecMessage(command string) string {
+func completeNoSpecMessage(command string) string {
 	return "complete: " + command + ": no completion specification"
 }
 
-func registeredSpecMessage(scriptPath, command string) string {
+func completeRegisteredSpecMessage(scriptPath, command string) string {
 	return "complete -C '" + scriptPath + "' " + command
 }

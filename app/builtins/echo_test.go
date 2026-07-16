@@ -9,8 +9,8 @@ import (
 
 func TestEcho(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name    string
+		args    []string
 		wantOut string
 	}{
 		{name: "hello world", args: []string{"hello", "world"}, wantOut: "hello world\n"},

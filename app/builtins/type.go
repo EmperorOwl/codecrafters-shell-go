@@ -22,24 +22,24 @@ func typeHandler(ctx *Context, args []string) (bool, error) {
 
 func typeBuiltin(stdout io.Writer, command string) {
 	if IsBuiltin(command) {
-		fmt.Fprintln(stdout, shellBuiltinMessage(command))
+		fmt.Fprintln(stdout, typeBuiltinMessage(command))
 		return
 	}
 	if path, ok := external.FindExecutableInPath(command); ok {
-		fmt.Fprintln(stdout, executableMessage(command, path))
+		fmt.Fprintln(stdout, typeExecutableMessage(command, path))
 		return
 	}
-	fmt.Fprintln(stdout, commandNotFoundMessage(command))
+	fmt.Fprintln(stdout, typeNotFoundMessage(command))
 }
 
-func shellBuiltinMessage(command string) string {
+func typeBuiltinMessage(command string) string {
 	return command + " is a shell builtin"
 }
 
-func executableMessage(command, path string) string {
+func typeExecutableMessage(command, path string) string {
 	return command + " is " + path
 }
 
-func commandNotFoundMessage(command string) string {
+func typeNotFoundMessage(command string) string {
 	return command + ": not found"
 }

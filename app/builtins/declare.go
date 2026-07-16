@@ -32,16 +32,16 @@ func declareBuiltin(stdout, stderr io.Writer, args []string, store *variables.St
 		name := args[1]
 		value, ok := store.Get(name)
 		if !ok {
-			fmt.Fprintln(stderr, variableNotFoundMessage(name))
+			fmt.Fprintln(stderr, declareNotFoundMessage(name))
 			return
 		}
-		fmt.Fprintln(stdout, variableDescriptionMessage(name, value))
+		fmt.Fprintln(stdout, declareDescriptionMessage(name, value))
 		return
 	}
 
 	if name, value, ok := parseAssignment(args[0]); ok {
 		if !variables.IsValidIdentifier(name) {
-			fmt.Fprintln(stderr, invalidIdentifierMessage(args[0]))
+			fmt.Fprintln(stderr, declareInvalidIdentifierMessage(args[0]))
 			return
 		}
 		store.Set(name, value)
@@ -56,14 +56,14 @@ func parseAssignment(arg string) (name, value string, ok bool) {
 	return arg[:index], arg[index+1:], true
 }
 
-func variableDescriptionMessage(name, value string) string {
+func declareDescriptionMessage(name, value string) string {
 	return fmt.Sprintf(`declare -- %s="%s"`, name, value)
 }
 
-func variableNotFoundMessage(name string) string {
+func declareNotFoundMessage(name string) string {
 	return "declare: " + name + ": not found"
 }
 
-func invalidIdentifierMessage(assignment string) string {
+func declareInvalidIdentifierMessage(assignment string) string {
 	return fmt.Sprintf("declare: `%s': not a valid identifier", assignment)
 }
