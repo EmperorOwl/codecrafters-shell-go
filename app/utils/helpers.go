@@ -17,6 +17,20 @@ func WantStdout(lines []string) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
+// CreatePath creates root/rel for tests. A trailing slash on rel creates a directory;
+// otherwise it creates parent directories and an empty file.
+func CreatePath(root, rel string) error {
+	full := filepath.Join(root, filepath.FromSlash(rel))
+	if strings.HasSuffix(rel, "/") {
+		return os.MkdirAll(strings.TrimSuffix(full, string(os.PathSeparator)), 0o755)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(full, nil, 0o644)
+}
+
 // CreateTempExecutable writes a dummy executable named name into a temp dir,
 // prepends that dir to PATH, and returns the executable's full path.
 func CreateTempExecutable(t *testing.T, name string) string {

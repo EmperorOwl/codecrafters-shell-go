@@ -68,6 +68,8 @@ func AppendLines(path string, lines []string) error {
 		return err
 	}
 
+	// ReadLines turns a trailing newline into a final ""; drop those so
+	// WriteLines does not insert an extra blank line before the append.
 	for len(existing) > 0 && existing[len(existing)-1] == "" {
 		existing = existing[:len(existing)-1]
 	}
