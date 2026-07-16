@@ -2,36 +2,42 @@ package history
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/files"
+	"github.com/codecrafters-io/shell-starter-go/app/utils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestList_AddAndList(t *testing.T) {
+func TestList_List(t *testing.T) {
 	tests := []struct {
-		name     string
-		commands []string
-		want     []Entry
+		name  string
+		setup func(*List)
+		wantEntries []Entry
 	}{
 		{
 			name: "empty history",
 		},
 		{
-			name:     "single command",
-			commands: []string{"echo hello"},
-			want: []Entry{{
+			name: "single command",
+			setup: func(l *List) {
+				l.Add("echo hello")
+			},
+			wantEntries: []Entry{{
 				Number:  1,
 				Command: "echo hello",
 			}},
 		},
 		{
-			name:     "multiple commands",
-			commands: []string{"previous_command_1", "previous_command_2", "history"},
-			want: []Entry{
+			name: "multiple commands",
+			setup: func(l *List) {
+				l.Add("previous_command_1")
+				l.Add("previous_command_2")
+				l.Add("history")
+			},
+			wantEntries: []Entry{
 				{Number: 1, Command: "previous_command_1"},
 				{Number: 2, Command: "previous_command_2"},
 				{Number: 3, Command: "history"},
@@ -41,13 +47,13 @@ func TestList_AddAndList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list List
-			for _, command := range tt.commands {
-				list.Add(command)
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list)
 			}
 
 			got := list.List()
-			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(tt.wantEntries, got, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("List() mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -56,29 +62,35 @@ func TestList_AddAndList(t *testing.T) {
 
 func TestList_ListLast(t *testing.T) {
 	tests := []struct {
-		name     string
-		commands []string
-		limit    int
-		want     []Entry
+		name  string
+		setup func(*List)
+		limit int
+		wantEntries []Entry
 	}{
 		{
 			name:  "empty history",
 			limit: 2,
 		},
 		{
-			name:     "limit greater than history length",
-			commands: []string{"echo first"},
-			limit:    2,
-			want: []Entry{{
+			name: "limit greater than history length",
+			setup: func(l *List) {
+				l.Add("echo first")
+			},
+			limit: 2,
+			wantEntries: []Entry{{
 				Number:  1,
 				Command: "echo first",
 			}},
 		},
 		{
-			name:     "shows last two commands with original numbers",
-			commands: []string{"echo first", "echo second", "history 2"},
-			limit:    2,
-			want: []Entry{
+			name: "shows last two commands with original numbers",
+			setup: func(l *List) {
+				l.Add("echo first")
+				l.Add("echo second")
+				l.Add("history 2")
+			},
+			limit: 2,
+			wantEntries: []Entry{
 				{Number: 2, Command: "echo second"},
 				{Number: 3, Command: "history 2"},
 			},
@@ -87,13 +99,13 @@ func TestList_ListLast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list List
-			for _, command := range tt.commands {
-				list.Add(command)
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list)
 			}
 
 			got := list.ListLast(tt.limit)
-			if diff := cmp.Diff(tt.want, got, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(tt.wantEntries, got, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("ListLast(%d) mismatch (-want +got):\n%s", tt.limit, diff)
 			}
 		})
@@ -103,7 +115,7 @@ func TestList_ListLast(t *testing.T) {
 func TestList_Previous(t *testing.T) {
 	tests := []struct {
 		name      string
-		commands  []string
+		setup     func(*List)
 		stepsBack int
 		want      string
 		wantOK    bool
@@ -113,36 +125,44 @@ func TestList_Previous(t *testing.T) {
 			stepsBack: 0,
 		},
 		{
-			name:      "most recent command",
-			commands:  []string{"echo hello", "echo world"},
+			name: "most recent command",
+			setup: func(l *List) {
+				l.Add("echo hello")
+				l.Add("echo world")
+			},
 			stepsBack: 0,
 			want:      "echo world",
 			wantOK:    true,
 		},
 		{
-			name:      "earlier command",
-			commands:  []string{"echo hello", "echo world"},
+			name: "earlier command",
+			setup: func(l *List) {
+				l.Add("echo hello")
+				l.Add("echo world")
+			},
 			stepsBack: 1,
 			want:      "echo hello",
 			wantOK:    true,
 		},
 		{
-			name:      "before start of history",
-			commands:  []string{"echo hello"},
+			name: "before start of history",
+			setup: func(l *List) {
+				l.Add("echo hello")
+			},
 			stepsBack: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list List
-			for _, command := range tt.commands {
-				list.Add(command)
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list)
 			}
 
 			got, ok := list.Previous(tt.stepsBack)
-			if ok != tt.wantOK {
-				t.Fatalf("Previous(%d) ok = %v, want %v", tt.stepsBack, ok, tt.wantOK)
+			if diff := cmp.Diff(tt.wantOK, ok); diff != "" {
+				t.Errorf("Previous(%d) ok mismatch (-want +got):\n%s", tt.stepsBack, diff)
 			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("Previous(%d) mismatch (-want +got):\n%s", tt.stepsBack, diff)
@@ -152,176 +172,259 @@ func TestList_Previous(t *testing.T) {
 }
 
 func TestList_AppendFromFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-	content := "echo hello\necho world\n\n"
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	var list List
-	if err := list.AppendFromFile(path); err != nil {
-		t.Fatalf("AppendFromFile() error = %v", err)
-	}
-	list.Add("history")
-
-	got := list.List()
-	want := []Entry{
-		{Number: 1, Command: "echo hello"},
-		{Number: 2, Command: "echo world"},
-		{Number: 3, Command: "history"},
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("AppendFromFile() history mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestList_AppendFromFileMissingFile(t *testing.T) {
-	var list List
-	if err := list.AppendFromFile(filepath.Join(t.TempDir(), "missing")); err != nil {
-		t.Fatalf("AppendFromFile() error = %v", err)
-	}
-	if got := list.List(); len(got) != 0 {
-		t.Fatalf("AppendFromFile() history = %v, want empty", got)
-	}
-}
-
-func TestList_ReadFromFile(t *testing.T) {
-	dir := t.TempDir()
-	path := dir + "/histfile"
-	content := "echo hello\necho world\n\n"
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	var list List
-	list.Add("history -r " + path)
-	if err := list.ReadFromFile(path); err != nil {
-		t.Fatalf("ReadFromFile() error = %v", err)
-	}
-	list.Add("history")
-
-	got := list.List()
-	want := []Entry{
-		{Number: 1, Command: "history -r " + path},
-		{Number: 2, Command: "echo hello"},
-		{Number: 3, Command: "echo world"},
-		{Number: 4, Command: "history"},
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("ReadFromFile() history mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestList_WriteToFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-	var list List
-	list.Add("echo hello")
-	list.Add("echo world")
-	list.Add("history -w " + path)
-
-	if err := list.WriteToFile(path); err != nil {
-		t.Fatalf("WriteToFile() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-
-	want := "echo hello\necho world\nhistory -w " + path + "\n"
-	if diff := cmp.Diff(want, string(got)); diff != "" {
-		t.Errorf("WriteToFile() content mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestList_AppendToFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-	initial := "echo initial_command_1\necho initial_command_2\n\n"
-	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	var list List
-	list.Add("echo new_command")
-	list.Add("history -a " + path)
-
-	if err := list.AppendToFile(path); err != nil {
-		t.Fatalf("AppendToFile() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-
-	want := strings.Join([]string{
-		"echo initial_command_1",
-		"echo initial_command_2",
-		"echo new_command",
-		"history -a " + path,
-	}, "\n") + "\n"
-	if diff := cmp.Diff(want, string(got)); diff != "" {
-		t.Errorf("AppendToFile() content mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestList_AppendToFileOnlyNewCommands(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-
-	var list List
-	list.Add("echo first")
-	list.Add("history -a " + path)
-	if err := list.AppendToFile(path); err != nil {
-		t.Fatalf("first AppendToFile() error = %v", err)
-	}
-
-	list.Add("echo second")
-	list.Add("history -a " + path)
-	if err := list.AppendToFile(path); err != nil {
-		t.Fatalf("second AppendToFile() error = %v", err)
-	}
-
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-
-	want := strings.Join([]string{
-		"echo first",
-		"history -a " + path,
-		"echo second",
-		"history -a " + path,
-	}, "\n") + "\n"
-	if diff := cmp.Diff(want, string(got)); diff != "" {
-		t.Errorf("AppendToFile() content mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestWriteAll(t *testing.T) {
 	tests := []struct {
-		name     string
-		commands []string
-		want     string
+		name        string
+		fileContent string
+		missing     bool
+		after       func(*List)
+		wantEntries []Entry
 	}{
 		{
-			name: "empty history",
+			name:        "appends commands from file",
+			fileContent: "echo hello\necho world\n\n",
+			after: func(l *List) {
+				l.Add("history")
+			},
+			wantEntries: []Entry{
+				{Number: 1, Command: "echo hello"},
+				{Number: 2, Command: "echo world"},
+				{Number: 3, Command: "history"},
+			},
 		},
 		{
-			name:     "numbered commands",
-			commands: []string{"previous_command_1", "previous_command_2", "history"},
-			want: strings.Join([]string{
-				"    1  previous_command_1",
-				"    2  previous_command_2",
-				"    3  history",
-			}, "\n") + "\n",
+			name:    "missing file is ignored",
+			missing: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var list List
-			for _, command := range tt.commands {
-				list.Add(command)
+			list := &List{}
+
+			var path string
+			if tt.missing {
+				path = filepath.Join(t.TempDir(), "missing")
+			} else {
+				path = utils.WriteTempFile(t, "histfile", tt.fileContent)
+			}
+
+			if err := list.AppendFromFile(path); err != nil {
+				t.Fatalf("AppendFromFile() error = %v", err)
+			}
+			if tt.after != nil {
+				tt.after(list)
+			}
+
+			got := list.List()
+			if diff := cmp.Diff(tt.wantEntries, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("AppendFromFile() history mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestList_ReadFromFile(t *testing.T) {
+	tests := []struct {
+		name        string
+		fileContent string
+		setup       func(*List, string)
+		after       func(*List)
+		wantEntries func(string) []Entry
+	}{
+		{
+			name:        "appends commands from file",
+			fileContent: "echo hello\necho world\n\n",
+			setup: func(l *List, path string) {
+				l.Add("history -r " + path)
+			},
+			after: func(l *List) {
+				l.Add("history")
+			},
+			wantEntries: func(path string) []Entry {
+				return []Entry{
+					{Number: 1, Command: "history -r " + path},
+					{Number: 2, Command: "echo hello"},
+					{Number: 3, Command: "echo world"},
+					{Number: 4, Command: "history"},
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := utils.WriteTempFile(t, "histfile", tt.fileContent)
+
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list, path)
+			}
+
+			if err := list.ReadFromFile(path); err != nil {
+				t.Fatalf("ReadFromFile() error = %v", err)
+			}
+			if tt.after != nil {
+				tt.after(list)
+			}
+
+			got := list.List()
+			if diff := cmp.Diff(tt.wantEntries(path), got); diff != "" {
+				t.Errorf("ReadFromFile() history mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestList_WriteToFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(*List, string)
+		wantFile func(string) []string
+	}{
+		{
+			name: "writes all commands",
+			setup: func(l *List, path string) {
+				l.Add("echo hello")
+				l.Add("echo world")
+				l.Add("history -w " + path)
+			},
+			wantFile: func(path string) []string {
+				return []string{
+					"echo hello",
+					"echo world",
+					"history -w " + path,
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "histfile")
+
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list, path)
+			}
+
+			if err := list.WriteToFile(path); err != nil {
+				t.Fatalf("WriteToFile() error = %v", err)
+			}
+
+			got, err := files.ReadLines(path)
+			if err != nil {
+				t.Fatalf("ReadLines() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.wantFile(path), got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("WriteToFile() content mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestList_AppendToFile(t *testing.T) {
+	tests := []struct {
+		name        string
+		fileContent string
+		setup       func(t *testing.T, l *List, path string)
+		wantFile    func(string) []string
+	}{
+		{
+			name:        "appends new commands to existing file",
+			fileContent: "echo initial_command_1\necho initial_command_2\n\n",
+			setup: func(_ *testing.T, l *List, path string) {
+				l.Add("echo new_command")
+				l.Add("history -a " + path)
+			},
+			wantFile: func(path string) []string {
+				return []string{
+					"echo initial_command_1",
+					"echo initial_command_2",
+					"echo new_command",
+					"history -a " + path,
+				}
+			},
+		},
+		{
+			name: "appends only new commands since last sync",
+			setup: func(t *testing.T, l *List, path string) {
+				l.Add("echo first")
+				l.Add("history -a " + path)
+				if err := l.AppendToFile(path); err != nil {
+					t.Fatalf("first AppendToFile() error = %v", err)
+				}
+				l.Add("echo second")
+				l.Add("history -a " + path)
+			},
+			wantFile: func(path string) []string {
+				return []string{
+					"echo first",
+					"history -a " + path,
+					"echo second",
+					"history -a " + path,
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var path string
+			if tt.fileContent != "" {
+				path = utils.WriteTempFile(t, "histfile", tt.fileContent)
+			} else {
+				path = filepath.Join(t.TempDir(), "histfile")
+			}
+
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(t, list, path)
+			}
+
+			if err := list.AppendToFile(path); err != nil {
+				t.Fatalf("AppendToFile() error = %v", err)
+			}
+
+			got, err := files.ReadLines(path)
+			if err != nil {
+				t.Fatalf("ReadLines() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.wantFile(path), got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("AppendToFile() content mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestWriteAll(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*List)
+		want  string
+	}{
+		{
+			name: "empty history",
+		},
+		{
+			name: "numbered commands",
+			setup: func(l *List) {
+				l.Add("previous_command_1")
+				l.Add("previous_command_2")
+				l.Add("history")
+			},
+			want: utils.WantStdout([]string{
+				"    1  previous_command_1",
+				"    2  previous_command_2",
+				"    3  history",
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			list := &List{}
+			if tt.setup != nil {
+				tt.setup(list)
 			}
 
 			var out bytes.Buffer
