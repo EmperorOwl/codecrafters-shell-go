@@ -12,27 +12,27 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func noopBuiltin(ctx *Context, args []string) (bool, error) {
+func noopHandler(ctx *Context, args []string) (bool, error) {
 	return false, nil
 }
 
 func TestRegistry_Register(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*Registry)
+		setup   func(*registry)
 		command string
 		wantOK  bool
 	}{
 		{
 			name:    "registers command",
-			setup:   func(*Registry) {},
+			setup:   func(*registry) {},
 			command: "echo",
 			wantOK:  true,
 		},
 		{
 			name: "idempotent register",
-			setup: func(r *Registry) {
-				r.Register("echo", noopBuiltin)
+			setup: func(r *registry) {
+				r.register("echo", noopHandler)
 			},
 			command: "echo",
 			wantOK:  true,
@@ -41,11 +41,11 @@ func TestRegistry_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg := NewRegistry()
+			reg := newRegistry()
 			tt.setup(reg)
-			reg.Register(tt.command, noopBuiltin)
+			reg.register(tt.command, noopHandler)
 
-			gotOK := reg.Is(tt.command)
+			gotOK := reg.is(tt.command)
 			if diff := cmp.Diff(tt.wantOK, gotOK); diff != "" {
 				t.Errorf("Is(%q) mismatch (-want +got):\n%s", tt.command, diff)
 			}
@@ -54,11 +54,11 @@ func TestRegistry_Register(t *testing.T) {
 }
 
 func TestRegistry_Names(t *testing.T) {
-	reg := NewRegistry()
-	reg.Register("zebra", noopBuiltin)
-	reg.Register("alpha", noopBuiltin)
+	reg := newRegistry()
+	reg.register("zebra", noopHandler)
+	reg.register("alpha", noopHandler)
 
-	got := reg.Names()
+	got := reg.names()
 	want := []string{"alpha", "zebra"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Names() mismatch (-want +got):\n%s", diff)
@@ -66,10 +66,10 @@ func TestRegistry_Names(t *testing.T) {
 }
 
 func TestRegistry_Run(t *testing.T) {
-	reg := NewRegistry()
-	reg.Register("exit", exitHandler)
+	reg := newRegistry()
+	reg.register("exit", exitHandler)
 
-	exitShell, err := reg.Run("exit", nil, &Context{})
+	exitShell, err := reg.run("exit", nil, &Context{})
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -77,7 +77,7 @@ func TestRegistry_Run(t *testing.T) {
 		t.Error("Run(exit) exitShell = false, want true")
 	}
 
-	exitShell, err = reg.Run("missing", nil, &Context{})
+	exitShell, err = reg.run("missing", nil, &Context{})
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -150,7 +150,7 @@ func TestRun(t *testing.T) {
 			name:        "history runs",
 			builtinName: "history",
 			ctx: &Context{
-				State: &session.State{History: &history.List{}},
+				State: &session.State{History: history.NewList()},
 			},
 		},
 		{

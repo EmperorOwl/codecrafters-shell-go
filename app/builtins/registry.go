@@ -17,27 +17,23 @@ type Context struct {
 // Handler runs a builtin command. The bool is true when the shell should exit.
 type Handler func(ctx *Context, args []string) (exit bool, err error)
 
-// Registry stores registered builtin command handlers.
-type Registry struct {
+type registry struct {
 	handlers map[string]Handler
 }
 
-var defaultRegistry = NewRegistry()
+var defaultRegistry = newRegistry()
 
-// NewRegistry returns an empty builtin registry.
-func NewRegistry() *Registry {
-	return &Registry{
+func newRegistry() *registry {
+	return &registry{
 		handlers: make(map[string]Handler),
 	}
 }
 
-// Register adds a builtin command handler to the registry.
-func (r *Registry) Register(name string, handler Handler) {
+func (r *registry) register(name string, handler Handler) {
 	r.handlers[name] = handler
 }
 
-// Run executes a registered builtin. The bool is true when the shell should exit.
-func (r *Registry) Run(name string, args []string, ctx *Context) (bool, error) {
+func (r *registry) run(name string, args []string, ctx *Context) (bool, error) {
 	handler, ok := r.handlers[name]
 	if !ok {
 		return false, nil
@@ -45,14 +41,12 @@ func (r *Registry) Run(name string, args []string, ctx *Context) (bool, error) {
 	return handler(ctx, args)
 }
 
-// Is reports whether name is a registered builtin command.
-func (r *Registry) Is(name string) bool {
+func (r *registry) is(name string) bool {
 	_, ok := r.handlers[name]
 	return ok
 }
 
-// Names returns registered builtin names in sorted order.
-func (r *Registry) Names() []string {
+func (r *registry) names() []string {
 	names := make([]string, 0, len(r.handlers))
 	for name := range r.handlers {
 		names = append(names, name)
@@ -62,20 +56,20 @@ func (r *Registry) Names() []string {
 }
 
 func register(name string, handler Handler) {
-	defaultRegistry.Register(name, handler)
+	defaultRegistry.register(name, handler)
 }
 
 // Run executes a registered builtin on the default registry.
 func Run(name string, args []string, ctx *Context) (bool, error) {
-	return defaultRegistry.Run(name, args, ctx)
+	return defaultRegistry.run(name, args, ctx)
 }
 
 // IsBuiltin reports whether name is a registered builtin command.
 func IsBuiltin(name string) bool {
-	return defaultRegistry.Is(name)
+	return defaultRegistry.is(name)
 }
 
 // Names returns registered builtin names in sorted order.
 func Names() []string {
-	return defaultRegistry.Names()
+	return defaultRegistry.names()
 }
