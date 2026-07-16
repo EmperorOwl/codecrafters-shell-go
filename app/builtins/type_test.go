@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/utils"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -27,7 +28,7 @@ func TestType(t *testing.T) {
 		{
 			name: "reports executable",
 			setup: func(t *testing.T) string {
-				executable := createTempExecutable(t, "mycommand")
+				executable := utils.CreateTempExecutable(t, "mycommand")
 				return "mycommand is " + executable + "\n"
 			},
 			args: []string{"mycommand"},

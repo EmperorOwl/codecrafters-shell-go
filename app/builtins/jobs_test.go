@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
+	"github.com/codecrafters-io/shell-starter-go/app/utils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -56,7 +57,7 @@ func TestJobs(t *testing.T) {
 			var stdout bytes.Buffer
 			jobsBuiltin(&stdout, table)
 
-			if diff := cmp.Diff(wantStdout(tt.wantLines), stdout.String()); diff != "" {
+			if diff := cmp.Diff(utils.WantStdout(tt.wantLines), stdout.String()); diff != "" {
 				t.Errorf("jobsBuiltin() stdout mismatch (-want +got):\n%s", diff)
 			}
 

@@ -25,7 +25,7 @@ func declareBuiltin(stdout, stderr io.Writer, args []string, store *variables.St
 		return
 	}
 
-	if args[0] == "-p" {
+	if args[0] == "-p" { // print variable description
 		if len(args) < 2 {
 			return
 		}
@@ -39,6 +39,7 @@ func declareBuiltin(stdout, stderr io.Writer, args []string, store *variables.St
 		return
 	}
 
+	// set variable
 	if name, value, ok := parseAssignment(args[0]); ok {
 		if !variables.IsValidIdentifier(name) {
 			fmt.Fprintln(stderr, declareInvalidIdentifierMessage(args[0]))

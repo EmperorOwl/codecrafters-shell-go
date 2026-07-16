@@ -25,7 +25,7 @@ func completeBuiltin(stdout, stderr io.Writer, args []string, registry *completi
 	}
 
 	switch args[0] {
-	case "-p":
+	case "-p": // print completion spec
 		if len(args) < 2 {
 			return
 		}
@@ -35,12 +35,12 @@ func completeBuiltin(stdout, stderr io.Writer, args []string, registry *completi
 			return
 		}
 		fmt.Fprintln(stderr, completeNoSpecMessage(command))
-	case "-C":
+	case "-C": // register completion script
 		if len(args) < 3 {
 			return
 		}
 		registry.Register(args[2], args[1])
-	case "-r":
+	case "-r": // remove completion spec
 		if len(args) < 2 {
 			return
 		}

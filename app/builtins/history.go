@@ -21,25 +21,26 @@ func historyHandler(ctx *Context, args []string) (bool, error) {
 }
 
 func historyBuiltin(stdout, stderr io.Writer, args []string, list *history.List) {
-	if len(args) >= 2 && args[0] == "-r" {
+	if len(args) >= 2 && args[0] == "-r" { // read history from file
 		if err := list.ReadFromFile(args[1]); err != nil {
 			fmt.Fprintln(stderr, historyErrorMessage(err))
 		}
 		return
 	}
-	if len(args) >= 2 && args[0] == "-w" {
+	if len(args) >= 2 && args[0] == "-w" { // write history to file
 		if err := list.WriteToFile(args[1]); err != nil {
 			fmt.Fprintln(stderr, historyErrorMessage(err))
 		}
 		return
 	}
-	if len(args) >= 2 && args[0] == "-a" {
+	if len(args) >= 2 && args[0] == "-a" { // append history to file
 		if err := list.AppendToFile(args[1]); err != nil {
 			fmt.Fprintln(stderr, historyErrorMessage(err))
 		}
 		return
 	}
 
+	// view history
 	limit := parseHistoryLimit(args)
 	var entries []history.Entry
 	if limit > 0 {
