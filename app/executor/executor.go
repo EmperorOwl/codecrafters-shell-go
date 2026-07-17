@@ -38,12 +38,13 @@ func (e *Executor) ExecuteExternalForeground(redirect parser.Redirect, fields []
 }
 
 // ExecuteExternalBackground starts an external command in the background and returns its PID.
-func (e *Executor) ExecuteExternalBackground(redirect parser.Redirect, fields []string, onExit func()) (int, error) {
+// onStarted runs synchronously after the process starts; onExit runs after it exits.
+func (e *Executor) ExecuteExternalBackground(redirect parser.Redirect, fields []string, onStarted func(int), onExit func()) (int, error) {
 	var pid int
 
 	err := e.withRedirect(redirect, func(resolved commandOutputs) error {
 		var err error
-		pid, err = e.runExternalBackground(resolved.Stdout, resolved.Stderr, fields, onExit)
+		pid, err = e.runExternalBackground(resolved.Stdout, resolved.Stderr, fields, onStarted, onExit)
 		return err
 	})
 	if err != nil {

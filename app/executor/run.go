@@ -31,13 +31,13 @@ func (e *Executor) runExternal(stdout, stderr io.Writer, fields []string, stdin 
 	return prog.Run()
 }
 
-func (e *Executor) runExternalBackground(stdout, stderr io.Writer, fields []string, onExit func()) (int, error) {
+func (e *Executor) runExternalBackground(stdout, stderr io.Writer, fields []string, onStarted func(int), onExit func()) (int, error) {
 	prog, ok := external.New(fields, stdout, stderr)
 	if !ok {
 		return 0, nil
 	}
 	prog.Stdin = e.stdin
-	return prog.RunInBackground(onExit)
+	return prog.RunInBackground(onStarted, onExit)
 }
 
 // runDrainingStdin runs a builtin while discarding pipeline stdin in the background.

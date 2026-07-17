@@ -59,9 +59,17 @@ func (l *List) Previous(stepsBack int) (string, bool) {
 }
 
 // ReadFromFile appends commands from the given file to the history list.
-// Empty lines are skipped.
+// Empty lines are skipped. lastAppended is updated so a subsequent AppendToFile
+// does not re-append the loaded lines.
 func (l *List) ReadFromFile(path string) error {
-	return l.appendLinesFromFile(path)
+	if err := l.appendLinesFromFile(path); err != nil {
+		return err
+	}
+
+	l.mu.Lock()
+	l.lastAppended = len(l.commands)
+	l.mu.Unlock()
+	return nil
 }
 
 // AppendFromFile appends commands from path to the history list.

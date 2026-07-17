@@ -56,14 +56,18 @@ func (p *ExternalProgram) Run() error {
 }
 
 // RunInBackground starts the program and reaps it in a goroutine.
-// onExit is called after the process exits; it may be nil.
-func (p *ExternalProgram) RunInBackground(onExit func()) (pid int, err error) {
+// onStarted is called synchronously after Start with the child PID; onExit is
+// called after the process exits. Either callback may be nil.
+func (p *ExternalProgram) RunInBackground(onStarted func(int), onExit func()) (pid int, err error) {
 	cmd := p.command()
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
 
 	pid = cmd.Process.Pid
+	if onStarted != nil {
+		onStarted(pid)
+	}
 	go func() {
 		_ = cmd.Wait()
 		if onExit != nil {

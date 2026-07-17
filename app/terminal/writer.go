@@ -36,3 +36,18 @@ func WrapWriter(w io.Writer, rawMode bool) io.Writer {
 	}
 	return w
 }
+
+// modeAwareWriter delegates each Write to WrapWriter using the terminal's
+// current raw-mode flag so command output stays aligned after PrepareRead.
+type modeAwareWriter struct {
+	term   *Terminal
+	stderr bool
+}
+
+func (m modeAwareWriter) Write(p []byte) (int, error) {
+	base := m.term.stdout
+	if m.stderr {
+		base = m.term.stderr
+	}
+	return WrapWriter(base, m.term.rawMode).Write(p)
+}

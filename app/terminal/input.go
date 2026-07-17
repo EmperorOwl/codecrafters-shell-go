@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-// skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
-// on the next readLine call instead of submitting an empty line.
-var skipNextLF bool
-
 func readLine(reader *bufio.Reader, w io.Writer, rawMode bool, tabHandler TabHandler, historyHandler HistoryHandler) (line string, eof bool, err error) {
 	if rawMode {
 		return readLineRaw(reader, w, tabHandler, historyHandler)
@@ -29,6 +25,9 @@ func readLineRaw(reader *bufio.Reader, w io.Writer, tabHandler TabHandler, histo
 	var buffer []byte
 	var tabState TabState
 	var historyState historyBrowseState
+	// skipNextLF is set after CR so the LF from a Windows CRLF Enter is discarded
+	// instead of submitting an empty line.
+	var skipNextLF bool
 
 	for {
 		b, err := reader.ReadByte()

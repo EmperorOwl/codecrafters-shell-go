@@ -103,7 +103,7 @@ func TestExternalProgram_RunInBackground(t *testing.T) {
 		Stderr: io.Discard,
 	}
 
-	pid, err := prog.RunInBackground(func() { close(exited) })
+	pid, err := prog.RunInBackground(nil, func() { close(exited) })
 	if err != nil {
 		t.Fatalf("RunInBackground() error = %v", err)
 	}

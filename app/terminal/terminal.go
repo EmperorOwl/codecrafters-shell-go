@@ -38,18 +38,18 @@ func (t *Terminal) ReadLine() (line string, eof bool, err error) {
 
 // WriteLine writes a single line to stdout, including a trailing newline.
 func (t *Terminal) WriteLine(text string) {
-	stdout := WrapWriter(t.stdout, t.rawTTY.Active())
+	stdout := WrapWriter(t.stdout, t.rawMode)
 	fmt.Fprintln(stdout, text)
 }
 
 // Stdout returns the stdout writer for command output, with raw-mode wrapping when active.
 func (t *Terminal) Stdout() io.Writer {
-	return WrapWriter(t.stdout, t.rawMode)
+	return modeAwareWriter{term: t}
 }
 
 // Stderr returns the stderr writer for command output, with raw-mode wrapping when active.
 func (t *Terminal) Stderr() io.Writer {
-	return WrapWriter(t.stderr, t.rawMode)
+	return modeAwareWriter{term: t, stderr: true}
 }
 
 // PrepareRead re-enables raw mode before the next prompt.

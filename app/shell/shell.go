@@ -29,11 +29,11 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 	sess := newSession()
 
 	s := &Shell{
-		executor:  executor.New(stdin, stdout, stderr),
 		completer: completer.New(sess),
 		session:   sess,
 	}
 	s.terminal = terminal.New(s, s, stdin, stdout, stderr)
+	s.executor = executor.New(stdin, s.terminal.Stdout(), s.terminal.Stderr())
 	return s
 }
 
@@ -109,7 +109,7 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 		if exitShell {
 			return true, nil
 		}
-		return err != nil, err
+		return false, err
 	}
 
 	if parsed.Background {
@@ -117,22 +117,27 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 	}
 
 	if err := s.executor.ExecuteExternalForeground(parsed.Redirect, fields); err != nil {
-		return true, err
+		return false, err
 	}
 	return false, nil
 }
 
 func (s *Shell) executeBackgroundCommand(redirect parser.Redirect, fields []string, line string) (bool, error) {
 	var jobNumber int
-	pid, err := s.executor.ExecuteExternalBackground(redirect, fields, func() {
-		s.session.Jobs.MarkDone(jobNumber)
-	})
+	pid, err := s.executor.ExecuteExternalBackground(redirect, fields,
+		func(pid int) {
+			jobNumber = s.session.Jobs.Add(pid, line)
+			s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
+		},
+		func() {
+			s.session.Jobs.MarkDone(jobNumber)
+		},
+	)
 	if err != nil {
-		return true, err
+		return false, err
 	}
-	if pid > 0 {
-		jobNumber = s.session.Jobs.Add(pid, line)
-		s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
+	if pid == 0 {
+		return false, nil
 	}
 	return false, nil
 }
@@ -142,12 +147,14 @@ func (s *Shell) executePipeline(parsed parser.Line) (bool, error) {
 	if !ok {
 		if notFound != "" {
 			s.terminal.WriteLine(CommandNotFoundMessage(notFound))
+		} else {
+			s.terminal.WriteLine("syntax error near unexpected token '|'")
 		}
 		return false, nil
 	}
 
 	if err := s.executor.ExecutePipeline(parsed.Redirect, s.session, parsed.Commands); err != nil {
-		return true, err
+		return false, err
 	}
 	return false, nil
 }
@@ -180,6 +187,8 @@ func expandParsedLine(parsed parser.Line, store *variables.Store) parser.Line {
 	for i, fields := range parsed.Commands {
 		parsed.Commands[i] = variables.ExpandFields(store, fields)
 	}
+	parsed.Redirect.StdoutPath = variables.ExpandField(store, parsed.Redirect.StdoutPath)
+	parsed.Redirect.StderrPath = variables.ExpandField(store, parsed.Redirect.StderrPath)
 	return parsed
 }
 
@@ -199,6 +208,9 @@ func commandFound(fields []string) (notFound string, ok bool) {
 
 func validatePipelineSegments(segments [][]string) (notFound string, ok bool) {
 	for _, fields := range segments {
+		if len(fields) == 0 {
+			return "", false
+		}
 		notFound, ok := commandFound(fields)
 		if !ok {
 			return notFound, false

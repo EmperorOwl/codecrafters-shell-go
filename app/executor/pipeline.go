@@ -2,6 +2,8 @@ package executor
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
@@ -12,19 +14,39 @@ import (
 // and returning only the last segment's error.
 func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, sess *session.Session) error {
 	n := len(segments)
+	for _, fields := range segments {
+		if len(fields) == 0 {
+			return errors.New("empty pipeline segment")
+		}
+	}
+
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)
 	for i := 0; i < n-1; i++ {
 		readers[i], writers[i] = io.Pipe()
 	}
+	defer func() {
+		for _, r := range readers {
+			_ = r.Close()
+		}
+		for _, w := range writers {
+			_ = w.Close()
+		}
+	}()
 
 	results := make(chan error, n)
 	for i := 0; i < n; i++ {
 		i := i
 		go func() {
 			defer func() {
+				if i > 0 {
+					_ = readers[i-1].Close()
+				}
 				if i < n-1 {
 					_ = writers[i].Close()
+				}
+				if r := recover(); r != nil {
+					results <- fmt.Errorf("pipeline stage panic: %v", r)
 				}
 			}()
 

@@ -322,6 +322,30 @@ func TestList_WriteToFile(t *testing.T) {
 	}
 }
 
+func TestList_ReadFromFileUpdatesLastAppended(t *testing.T) {
+	path := utils.WriteTempFile(t, "histfile", "echo loaded\n")
+	list := &List{}
+
+	if err := list.ReadFromFile(path); err != nil {
+		t.Fatalf("ReadFromFile() error = %v", err)
+	}
+	list.Add("echo new")
+
+	appendPath := filepath.Join(t.TempDir(), "append.txt")
+	if err := list.AppendToFile(appendPath); err != nil {
+		t.Fatalf("AppendToFile() error = %v", err)
+	}
+
+	got, err := files.ReadLines(appendPath)
+	if err != nil {
+		t.Fatalf("ReadLines() error = %v", err)
+	}
+	want := []string{"echo new"}
+	if diff := cmp.Diff(want, got, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("AppendToFile() after ReadFromFile mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestList_AppendToFile(t *testing.T) {
 	tests := []struct {
 		name        string

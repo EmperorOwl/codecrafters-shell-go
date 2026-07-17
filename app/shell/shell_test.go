@@ -184,6 +184,13 @@ func TestValidatePipelineSegments(t *testing.T) {
 			},
 			wantNotFnd: "missing",
 		},
+		{
+			name: "empty segment",
+			segments: [][]string{
+				{"echo", "hello"},
+				{},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -243,6 +250,13 @@ func TestExecuteLine(t *testing.T) {
 			line: "missing",
 			wantStdout: []string{
 				"missing: command not found",
+			},
+		},
+		{
+			name: "trailing pipe prints syntax error",
+			line: "echo hello |",
+			wantStdout: []string{
+				"syntax error near unexpected token '|'",
 			},
 		},
 	}
