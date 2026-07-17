@@ -11,10 +11,10 @@ func init() {
 }
 
 func jobsHandler(ctx *Context, args []string) (bool, error) {
-	if ctx.State == nil {
+	if ctx.Session == nil {
 		return false, nil
 	}
-	jobsBuiltin(ctx.Stdout, ctx.State.Jobs)
+	jobsBuiltin(ctx.Stdout, ctx.Session.Jobs)
 	return false, nil
 }
 

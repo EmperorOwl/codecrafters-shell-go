@@ -13,10 +13,10 @@ func init() {
 }
 
 func declareHandler(ctx *Context, args []string) (bool, error) {
-	if ctx.State == nil {
+	if ctx.Session == nil {
 		return false, nil
 	}
-	declareBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.Variables)
+	declareBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.Session.Variables)
 	return false, nil
 }
 

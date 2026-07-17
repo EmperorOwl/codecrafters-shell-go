@@ -13,10 +13,10 @@ func init() {
 }
 
 func historyHandler(ctx *Context, args []string) (bool, error) {
-	if ctx.State == nil {
+	if ctx.Session == nil {
 		return false, nil
 	}
-	historyBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.History)
+	historyBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.Session.History)
 	return false, nil
 }
 

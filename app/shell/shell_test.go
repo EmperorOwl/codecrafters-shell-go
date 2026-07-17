@@ -8,10 +8,37 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
+
+func TestNewLoadsHistfileOnStartup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "histfile")
+	content := "echo hello\necho world\n\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Setenv("HISTFILE", path)
+
+	s := New(strings.NewReader(""), io.Discard, io.Discard)
+	s.session.History.Add("history")
+
+	got := s.session.History.List()
+	want := []history.Entry{
+		{Number: 1, Command: "echo hello"},
+		{Number: 2, Command: "echo world"},
+		{Number: 3, Command: "history"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("New() history mismatch (-want +got):\n%s", diff)
+	}
+	if s.session.Histfile != path {
+		t.Errorf("New() Histfile = %q, want %q", s.session.Histfile, path)
+	}
+}
 
 func TestRunWritesHistfileOnExit(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "histfile")
@@ -93,7 +120,7 @@ func TestWriteReapedJobs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
 			s := New(strings.NewReader(""), &out, io.Discard)
-			tt.setup(s.state.Jobs)
+			tt.setup(s.session.Jobs)
 
 			s.writeReapedJobs()
 
@@ -102,7 +129,7 @@ func TestWriteReapedJobs(t *testing.T) {
 				t.Errorf("writeReapedJobs() output mismatch (-want +got):\n%s", diff)
 			}
 
-			if done := s.state.Jobs.ReapDone(); len(done) != 0 {
+			if done := s.session.Jobs.ReapDone(); len(done) != 0 {
 				t.Errorf("writeReapedJobs() left %d done jobs in table", len(done))
 			}
 		})

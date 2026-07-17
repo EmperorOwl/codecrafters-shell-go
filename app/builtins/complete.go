@@ -12,10 +12,10 @@ func init() {
 }
 
 func completeHandler(ctx *Context, args []string) (bool, error) {
-	if ctx.State == nil {
+	if ctx.Session == nil {
 		return false, nil
 	}
-	completeBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.State.Completion)
+	completeBuiltin(ctx.Stdout, ctx.Stderr, args, ctx.Session.Completion)
 	return false, nil
 }
 

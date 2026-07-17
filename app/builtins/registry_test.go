@@ -128,7 +128,7 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-C", "/path/to/script", "git"},
 			ctx: &Context{
-				State: &session.State{Completion: completion.NewRegistry()},
+				Session: &session.Session{Completion: completion.NewRegistry()},
 			},
 		},
 		{
@@ -136,28 +136,28 @@ func TestRun(t *testing.T) {
 			builtinName: "complete",
 			args:        []string{"-p", "git"},
 			ctx: &Context{
-				State: &session.State{Completion: completion.NewRegistry()},
+				Session: &session.Session{Completion: completion.NewRegistry()},
 			},
 		},
 		{
 			name:        "jobs runs",
 			builtinName: "jobs",
 			ctx: &Context{
-				State: &session.State{Jobs: jobs.NewTable()},
+				Session: &session.Session{Jobs: jobs.NewTable()},
 			},
 		},
 		{
 			name:        "history runs",
 			builtinName: "history",
 			ctx: &Context{
-				State: &session.State{History: history.NewList()},
+				Session: &session.Session{History: history.NewList()},
 			},
 		},
 		{
 			name:        "declare runs",
 			builtinName: "declare",
 			ctx: &Context{
-				State: &session.State{Variables: variables.NewStore()},
+				Session: &session.Session{Variables: variables.NewStore()},
 			},
 		},
 	}

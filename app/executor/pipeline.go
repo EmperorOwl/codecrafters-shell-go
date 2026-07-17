@@ -8,7 +8,7 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/session"
 )
 
-func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, state *session.State) error {
+func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, sess *session.Session) error {
 	n := len(segments)
 	readers := make([]io.ReadCloser, n-1)
 	writers := make([]io.WriteCloser, n-1)
@@ -36,7 +36,7 @@ func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, st
 
 			var err error
 			if builtins.IsBuiltin(fields[0]) {
-				_, err = e.runBuiltin(out, stderr, state, fields, stdin)
+				_, err = e.runBuiltin(out, stderr, sess, fields, stdin)
 			} else {
 				err = e.runExternal(out, stderr, fields, stdin)
 			}

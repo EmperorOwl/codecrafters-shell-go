@@ -66,7 +66,7 @@ func TestApplyTabAction(t *testing.T) {
 }
 
 func TestCompleteCommand(t *testing.T) {
-	c := New(session.NewState())
+	c := New(session.NewSession())
 
 	tests := []struct {
 		buffer     string
@@ -158,7 +158,7 @@ func TestCompleteArgument(t *testing.T) {
 		},
 	}
 
-	c := New(session.NewState())
+	c := New(session.NewSession())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotBuffer, gotListings := c.CompleteArgument(tt.buffer, tt.candidates)
@@ -222,7 +222,7 @@ func TestBuildCompleterOptions(t *testing.T) {
 }
 
 func TestHandleTab(t *testing.T) {
-	c := New(session.NewState())
+	c := New(session.NewSession())
 	state := &terminal.TabState{}
 
 	got := c.HandleTab(state, "ech")

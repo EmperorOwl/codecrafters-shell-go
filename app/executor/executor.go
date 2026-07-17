@@ -25,11 +25,11 @@ type Outputs struct {
 }
 
 // ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(outputs Outputs, state *session.State, fields []string) (bool, error) {
+func (e *Executor) ExecuteBuiltin(outputs Outputs, sess *session.Session, fields []string) (bool, error) {
 	var exitShell bool
 	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
 		var err error
-		exitShell, err = e.runBuiltin(resolved.Stdout, resolved.Stderr, state, fields, nil)
+		exitShell, err = e.runBuiltin(resolved.Stdout, resolved.Stderr, sess, fields, nil)
 		return err
 	})
 	return exitShell, err
@@ -58,12 +58,12 @@ func (e *Executor) ExecuteExternalBackground(outputs Outputs, fields []string, o
 }
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(outputs Outputs, state *session.State, segments [][]string) error {
+func (e *Executor) ExecutePipeline(outputs Outputs, sess *session.Session, segments [][]string) error {
 	if len(segments) < 2 {
 		return nil
 	}
 
 	return e.withOutputs(outputs, func(resolved commandOutputs) error {
-		return nonExitError(e.runPipeline(segments, resolved.Stdout, resolved.Stderr, state))
+		return nonExitError(e.runPipeline(segments, resolved.Stdout, resolved.Stderr, sess))
 	})
 }

@@ -3,6 +3,7 @@ package shell
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/codecrafters-io/shell-starter-go/app/builtins"
 	"github.com/codecrafters-io/shell-starter-go/app/completer"
@@ -20,17 +21,17 @@ type Shell struct {
 	terminal  *terminal.Terminal
 	executor  *executor.Executor
 	completer *completer.Completer
-	state     *session.State
+	session   *session.Session
 }
 
 // New wires shell dependencies and returns a ready-to-run shell.
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
-	state := session.NewState()
+	sess := newSession()
 
 	s := &Shell{
 		executor:  executor.New(stdin),
-		completer: completer.New(state),
-		state:     state,
+		completer: completer.New(sess),
+		session:   sess,
 	}
 	s.terminal = terminal.New(s, s, stdin, stdout, stderr)
 	return s
@@ -45,8 +46,8 @@ func CommandNotFoundMessage(command string) string {
 func (s *Shell) Run() error {
 	defer s.terminal.Close()
 	defer func() {
-		if s.state.Histfile != "" {
-			_ = s.state.History.WriteToFile(s.state.Histfile)
+		if s.session.Histfile != "" {
+			_ = s.session.History.WriteToFile(s.session.Histfile)
 		}
 	}()
 
@@ -81,10 +82,10 @@ func (s *Shell) Run() error {
 
 // ExecuteLine parses and runs a single input line.
 func (s *Shell) ExecuteLine(line string) (bool, error) {
-	s.state.History.Add(line)
+	s.session.History.Add(line)
 
 	parsed := parser.ParseLine(line)
-	parsed = expandParsedLine(parsed, s.state.Variables)
+	parsed = expandParsedLine(parsed, s.session.Variables)
 	if parsed.Pipeline {
 		return s.executePipeline(parsed)
 	}
@@ -110,7 +111,7 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 	}
 
 	if builtins.IsBuiltin(fields[0]) {
-		exitShell, err := s.executor.ExecuteBuiltin(outputs, s.state, fields)
+		exitShell, err := s.executor.ExecuteBuiltin(outputs, s.session, fields)
 		if exitShell {
 			return true, nil
 		}
@@ -130,13 +131,13 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 func (s *Shell) executeBackgroundCommand(outputs executor.Outputs, fields []string, line string) (bool, error) {
 	var jobNumber int
 	pid, err := s.executor.ExecuteExternalBackground(outputs, fields, func() {
-		s.state.Jobs.MarkDone(jobNumber)
+		s.session.Jobs.MarkDone(jobNumber)
 	})
 	if err != nil {
 		return true, err
 	}
 	if pid > 0 {
-		jobNumber = s.state.Jobs.Add(pid, line)
+		jobNumber = s.session.Jobs.Add(pid, line)
 		s.terminal.WriteLine(fmt.Sprintf("[%d] %d", jobNumber, pid))
 	}
 	return false, nil
@@ -157,7 +158,7 @@ func (s *Shell) executePipeline(parsed parser.Line) (bool, error) {
 		Redirect: parsed.Redirect,
 	}
 
-	if err := s.executor.ExecutePipeline(outputs, s.state, parsed.Commands); err != nil {
+	if err := s.executor.ExecutePipeline(outputs, s.session, parsed.Commands); err != nil {
 		return true, err
 	}
 	return false, nil
@@ -170,12 +171,19 @@ func (s *Shell) HandleTab(state *terminal.TabState, buffer string) terminal.TabR
 
 // HistoryPrevious returns a previous command for up-arrow recall.
 func (s *Shell) HistoryPrevious(stepsBack int) (string, bool) {
-	return s.state.History.Previous(stepsBack)
+	return s.session.History.Previous(stepsBack)
+}
+
+func newSession() *session.Session {
+	sess := session.NewSession()
+	sess.Histfile = os.Getenv("HISTFILE")
+	_ = sess.History.AppendFromFile(sess.Histfile)
+	return sess
 }
 
 // writeReapedJobs prints any finished background jobs before the next prompt.
 func (s *Shell) writeReapedJobs() {
-	for _, line := range jobs.FormatLines(s.state.Jobs.ReapDone()) {
+	for _, line := range jobs.FormatLines(s.session.Jobs.ReapDone()) {
 		s.terminal.WriteLine(line)
 	}
 }

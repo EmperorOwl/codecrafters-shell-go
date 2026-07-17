@@ -10,11 +10,11 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/session"
 )
 
-func (e *Executor) runBuiltin(stdout, stderr io.Writer, state *session.State, fields []string, stdin io.Reader) (bool, error) {
+func (e *Executor) runBuiltin(stdout, stderr io.Writer, sess *session.Session, fields []string, stdin io.Reader) (bool, error) {
 	ctx := &builtins.Context{
-		Stdout: stdout,
-		Stderr: stderr,
-		State:  state,
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Session: sess,
 	}
 	if stdin != nil {
 		return runDrainingStdin(fields[0], fields[1:], ctx, stdin)

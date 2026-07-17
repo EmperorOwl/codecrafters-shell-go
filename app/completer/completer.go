@@ -11,12 +11,12 @@ import (
 
 // Completer orchestrates tab completion candidate sourcing and bash-style tab behavior.
 type Completer struct {
-	state *session.State
+	session *session.Session
 }
 
-// New returns a completer wired to the given shell session state.
-func New(state *session.State) *Completer {
-	return &Completer{state: state}
+// New returns a completer wired to the given shell session.
+func New(sess *session.Session) *Completer {
+	return &Completer{session: sess}
 }
 
 // HandleTab computes a completion for the current buffer and applies bash-style tab
@@ -61,10 +61,10 @@ func (c *Completer) completeBuffer(buffer string) (newBuffer string, listings []
 
 func (c *Completer) programmableCandidates(buffer string) ([]string, bool) {
 	opts := BuildCompleterOptions(buffer)
-	if c.state == nil || c.state.Completion == nil {
+	if c.session == nil || c.session.Completion == nil {
 		return nil, false
 	}
-	scriptPath, ok := c.state.Completion.Lookup(opts.Command)
+	scriptPath, ok := c.session.Completion.Lookup(opts.Command)
 	if !ok {
 		return nil, false
 	}

@@ -11,7 +11,7 @@ import (
 type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
-	State  *session.State
+	Session *session.Session
 }
 
 // Handler runs a builtin command. The bool is true when the shell should exit.
