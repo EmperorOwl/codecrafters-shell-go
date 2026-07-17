@@ -9,25 +9,20 @@ import (
 
 // Executor runs parsed commands using injected I/O streams.
 type Executor struct {
-	stdin io.Reader
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
 }
 
-// New returns an executor wired to the given stdin stream.
-func New(stdin io.Reader) *Executor {
-	return &Executor{stdin: stdin}
-}
-
-// Outputs configures default stdout, stderr, and redirects for command execution.
-type Outputs struct {
-	Stdout   io.Writer
-	Stderr   io.Writer
-	Redirect parser.Redirect
+// New returns an executor wired to the given I/O streams.
+func New(stdin io.Reader, stdout, stderr io.Writer) *Executor {
+	return &Executor{stdin: stdin, stdout: stdout, stderr: stderr}
 }
 
 // ExecuteBuiltin runs a builtin command. The bool is true when the shell should exit.
-func (e *Executor) ExecuteBuiltin(outputs Outputs, sess *session.Session, fields []string) (bool, error) {
+func (e *Executor) ExecuteBuiltin(redirect parser.Redirect, sess *session.Session, fields []string) (bool, error) {
 	var exitShell bool
-	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
+	err := e.withRedirect(redirect, func(resolved commandOutputs) error {
 		var err error
 		exitShell, err = e.runBuiltin(resolved.Stdout, resolved.Stderr, sess, fields, nil)
 		return err
@@ -36,17 +31,17 @@ func (e *Executor) ExecuteBuiltin(outputs Outputs, sess *session.Session, fields
 }
 
 // ExecuteExternalForeground runs an external command and waits for it to finish.
-func (e *Executor) ExecuteExternalForeground(outputs Outputs, fields []string) error {
-	return e.withOutputs(outputs, func(resolved commandOutputs) error {
+func (e *Executor) ExecuteExternalForeground(redirect parser.Redirect, fields []string) error {
+	return e.withRedirect(redirect, func(resolved commandOutputs) error {
 		return nonExitError(e.runExternal(resolved.Stdout, resolved.Stderr, fields, e.stdin))
 	})
 }
 
 // ExecuteExternalBackground starts an external command in the background and returns its PID.
-func (e *Executor) ExecuteExternalBackground(outputs Outputs, fields []string, onExit func()) (int, error) {
+func (e *Executor) ExecuteExternalBackground(redirect parser.Redirect, fields []string, onExit func()) (int, error) {
 	var pid int
 
-	err := e.withOutputs(outputs, func(resolved commandOutputs) error {
+	err := e.withRedirect(redirect, func(resolved commandOutputs) error {
 		var err error
 		pid, err = e.runExternalBackground(resolved.Stdout, resolved.Stderr, fields, onExit)
 		return err
@@ -58,12 +53,12 @@ func (e *Executor) ExecuteExternalBackground(outputs Outputs, fields []string, o
 }
 
 // ExecutePipeline runs a pipeline of commands connected by pipes.
-func (e *Executor) ExecutePipeline(outputs Outputs, sess *session.Session, segments [][]string) error {
+func (e *Executor) ExecutePipeline(redirect parser.Redirect, sess *session.Session, segments [][]string) error {
 	if len(segments) < 2 {
 		return nil
 	}
 
-	return e.withOutputs(outputs, func(resolved commandOutputs) error {
+	return e.withRedirect(redirect, func(resolved commandOutputs) error {
 		return nonExitError(e.runPipeline(segments, resolved.Stdout, resolved.Stderr, sess))
 	})
 }

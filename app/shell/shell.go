@@ -29,7 +29,7 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 	sess := newSession()
 
 	s := &Shell{
-		executor:  executor.New(stdin),
+		executor:  executor.New(stdin, stdout, stderr),
 		completer: completer.New(sess),
 		session:   sess,
 	}
@@ -104,14 +104,8 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 		return false, nil
 	}
 
-	outputs := executor.Outputs{
-		Stdout:   s.terminal.Stdout(),
-		Stderr:   s.terminal.Stderr(),
-		Redirect: parsed.Redirect,
-	}
-
 	if builtins.IsBuiltin(fields[0]) {
-		exitShell, err := s.executor.ExecuteBuiltin(outputs, s.session, fields)
+		exitShell, err := s.executor.ExecuteBuiltin(parsed.Redirect, s.session, fields)
 		if exitShell {
 			return true, nil
 		}
@@ -119,18 +113,18 @@ func (s *Shell) executeCommand(parsed parser.Line, line string) (bool, error) {
 	}
 
 	if parsed.Background {
-		return s.executeBackgroundCommand(outputs, fields, line)
+		return s.executeBackgroundCommand(parsed.Redirect, fields, line)
 	}
 
-	if err := s.executor.ExecuteExternalForeground(outputs, fields); err != nil {
+	if err := s.executor.ExecuteExternalForeground(parsed.Redirect, fields); err != nil {
 		return true, err
 	}
 	return false, nil
 }
 
-func (s *Shell) executeBackgroundCommand(outputs executor.Outputs, fields []string, line string) (bool, error) {
+func (s *Shell) executeBackgroundCommand(redirect parser.Redirect, fields []string, line string) (bool, error) {
 	var jobNumber int
-	pid, err := s.executor.ExecuteExternalBackground(outputs, fields, func() {
+	pid, err := s.executor.ExecuteExternalBackground(redirect, fields, func() {
 		s.session.Jobs.MarkDone(jobNumber)
 	})
 	if err != nil {
@@ -152,13 +146,7 @@ func (s *Shell) executePipeline(parsed parser.Line) (bool, error) {
 		return false, nil
 	}
 
-	outputs := executor.Outputs{
-		Stdout:   s.terminal.Stdout(),
-		Stderr:   s.terminal.Stderr(),
-		Redirect: parsed.Redirect,
-	}
-
-	if err := s.executor.ExecutePipeline(outputs, s.session, parsed.Commands); err != nil {
+	if err := s.executor.ExecutePipeline(parsed.Redirect, s.session, parsed.Commands); err != nil {
 		return true, err
 	}
 	return false, nil

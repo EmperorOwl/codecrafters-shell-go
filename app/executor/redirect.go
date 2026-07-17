@@ -3,6 +3,8 @@ package executor
 import (
 	"io"
 	"os"
+
+	"github.com/codecrafters-io/shell-starter-go/app/parser"
 )
 
 // commandOutputs holds writers for command stdout and stderr, with optional cleanup.
@@ -18,8 +20,8 @@ func (o commandOutputs) Close() {
 	}
 }
 
-func (e *Executor) withOutputs(outputs Outputs, fn func(commandOutputs) error) error {
-	resolved, err := openCommandOutputs(outputs)
+func (e *Executor) withRedirect(redirect parser.Redirect, fn func(commandOutputs) error) error {
+	resolved, err := e.openCommandOutputs(redirect)
 	if err != nil {
 		return err
 	}
@@ -27,13 +29,13 @@ func (e *Executor) withOutputs(outputs Outputs, fn func(commandOutputs) error) e
 	return fn(resolved)
 }
 
-func openCommandOutputs(outputs Outputs) (commandOutputs, error) {
-	out, closeStdout, err := openRedirect(outputs.Stdout, outputs.Redirect.StdoutPath, outputs.Redirect.StdoutAppend)
+func (e *Executor) openCommandOutputs(redirect parser.Redirect) (commandOutputs, error) {
+	out, closeStdout, err := openRedirect(e.stdout, redirect.StdoutPath, redirect.StdoutAppend)
 	if err != nil {
 		return commandOutputs{}, err
 	}
 
-	errOut, closeStderr, err := openRedirect(outputs.Stderr, outputs.Redirect.StderrPath, outputs.Redirect.StderrAppend)
+	errOut, closeStderr, err := openRedirect(e.stderr, redirect.StderrPath, redirect.StderrAppend)
 	if err != nil {
 		closeStdout()
 		return commandOutputs{}, err

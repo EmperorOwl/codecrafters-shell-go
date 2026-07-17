@@ -16,13 +16,10 @@ import (
 
 func TestExecuteBuiltin(t *testing.T) {
 	var out bytes.Buffer
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), &out, io.Discard)
 	state := session.NewSession()
 
-	exitShell, err := e.ExecuteBuiltin(Outputs{
-		Stdout: &out,
-		Stderr: io.Discard,
-	}, state, []string{"echo", "hello", "world"})
+	exitShell, err := e.ExecuteBuiltin(parser.Redirect{}, state, []string{"echo", "hello", "world"})
 	if err != nil {
 		t.Fatalf("ExecuteBuiltin() error = %v", err)
 	}
@@ -35,13 +32,10 @@ func TestExecuteBuiltin(t *testing.T) {
 }
 
 func TestExecuteBuiltinExit(t *testing.T) {
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), io.Discard, io.Discard)
 	state := session.NewSession()
 
-	exitShell, err := e.ExecuteBuiltin(Outputs{
-		Stdout: io.Discard,
-		Stderr: io.Discard,
-	}, state, []string{"exit"})
+	exitShell, err := e.ExecuteBuiltin(parser.Redirect{}, state, []string{"exit"})
 	if err != nil {
 		t.Fatalf("ExecuteBuiltin() error = %v", err)
 	}
@@ -52,12 +46,9 @@ func TestExecuteBuiltinExit(t *testing.T) {
 
 func TestExecuteExternalForeground(t *testing.T) {
 	var out bytes.Buffer
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), &out, io.Discard)
 
-	err := e.ExecuteExternalForeground(Outputs{
-		Stdout: &out,
-		Stderr: io.Discard,
-	}, []string{"echo", "external"})
+	err := e.ExecuteExternalForeground(parser.Redirect{}, []string{"echo", "external"})
 	if err != nil {
 		t.Fatalf("ExecuteExternalForeground() error = %v", err)
 	}
@@ -68,13 +59,10 @@ func TestExecuteExternalForeground(t *testing.T) {
 
 func TestExecutePipeline(t *testing.T) {
 	var out bytes.Buffer
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), &out, io.Discard)
 	state := session.NewSession()
 
-	err := e.ExecutePipeline(Outputs{
-		Stdout: &out,
-		Stderr: io.Discard,
-	}, state, [][]string{
+	err := e.ExecutePipeline(parser.Redirect{}, state, [][]string{
 		{"echo", "pipe"},
 		{"echo", "line"},
 	})
@@ -88,13 +76,10 @@ func TestExecutePipeline(t *testing.T) {
 
 func TestExecutePipelineBuiltinMiddle(t *testing.T) {
 	var out bytes.Buffer
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), &out, io.Discard)
 	state := session.NewSession()
 
-	err := e.ExecutePipeline(Outputs{
-		Stdout: &out,
-		Stderr: io.Discard,
-	}, state, [][]string{
+	err := e.ExecutePipeline(parser.Redirect{}, state, [][]string{
 		{"echo", "hello"},
 		{"type", "echo"},
 	})
@@ -111,14 +96,10 @@ func TestStdoutRedirect(t *testing.T) {
 	dir := t.TempDir()
 	outPath := filepath.Join(dir, "out.txt")
 
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), io.Discard, io.Discard)
 	state := session.NewSession()
 
-	_, err := e.ExecuteBuiltin(Outputs{
-		Stdout: io.Discard,
-		Stderr: io.Discard,
-		Redirect: parser.Redirect{StdoutPath: outPath},
-	}, state, []string{"echo", "redirected"})
+	_, err := e.ExecuteBuiltin(parser.Redirect{StdoutPath: outPath}, state, []string{"echo", "redirected"})
 	if err != nil {
 		t.Fatalf("ExecuteBuiltin() error = %v", err)
 	}
@@ -133,13 +114,10 @@ func TestStdoutRedirect(t *testing.T) {
 }
 
 func TestExecutePipelineTooFewSegments(t *testing.T) {
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), io.Discard, io.Discard)
 	state := session.NewSession()
 
-	err := e.ExecutePipeline(Outputs{
-		Stdout: io.Discard,
-		Stderr: io.Discard,
-	}, state, [][]string{{"echo"}})
+	err := e.ExecutePipeline(parser.Redirect{}, state, [][]string{{"echo"}})
 	if err != nil {
 		t.Fatalf("ExecutePipeline() error = %v", err)
 	}
@@ -161,10 +139,10 @@ func outputLines(text string) []string {
 
 func TestExecuteBuiltinStdoutLines(t *testing.T) {
 	var out bytes.Buffer
-	e := New(strings.NewReader(""))
+	e := New(strings.NewReader(""), &out, io.Discard)
 	state := session.NewSession()
 
-	_, err := e.ExecuteBuiltin(Outputs{Stdout: &out, Stderr: io.Discard}, state, []string{"echo", "a", "b"})
+	_, err := e.ExecuteBuiltin(parser.Redirect{}, state, []string{"echo", "a", "b"})
 	if err != nil {
 		t.Fatalf("ExecuteBuiltin() error = %v", err)
 	}
