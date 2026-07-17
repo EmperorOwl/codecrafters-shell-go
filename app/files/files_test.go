@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/codecrafters-io/shell-starter-go/app/utils"
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -36,9 +36,7 @@ func TestListInDir(t *testing.T) {
 			root := t.TempDir()
 
 			for _, path := range tt.createPaths {
-				if err := utils.CreatePath(root, path); err != nil {
-					t.Fatalf("CreatePath(%q) error = %v", path, err)
-				}
+				testutils.CreatePath(t, root, path)
 			}
 
 			got := ListInDir(root, tt.dir)

@@ -43,3 +43,35 @@ func TestWrapWriter(t *testing.T) {
 		})
 	}
 }
+
+func TestWrapWriter_cookedModePassthrough(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "preserves lone newline",
+			input: "hello\n",
+			want:  "hello\n",
+		},
+		{
+			name:  "preserves crlf",
+			input: "hello\r\n",
+			want:  "hello\r\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			writer := WrapWriter(&buf, false)
+			if _, err := writer.Write([]byte(tt.input)); err != nil {
+				t.Fatalf("Write() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.want, buf.String()); diff != "" {
+				t.Errorf("Write(%q) mismatch (-want +got):\n%s", tt.input, diff)
+			}
+		})
+	}
+}

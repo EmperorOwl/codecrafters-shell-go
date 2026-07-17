@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/files"
-	"github.com/codecrafters-io/shell-starter-go/app/utils"
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -95,6 +95,18 @@ func TestList_ListLast(t *testing.T) {
 				{Number: 3, Command: "history 2"},
 			},
 		},
+		{
+			name: "zero limit returns all entries",
+			setup: func(l *List) {
+				l.Add("echo first")
+				l.Add("echo second")
+			},
+			limit: 0,
+			wantEntries: []Entry{
+				{Number: 1, Command: "echo first"},
+				{Number: 2, Command: "echo second"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,6 +163,10 @@ func TestList_Previous(t *testing.T) {
 			},
 			stepsBack: 1,
 		},
+		{
+			name:      "negative steps back",
+			stepsBack: -1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -195,6 +211,14 @@ func TestList_AppendFromFile(t *testing.T) {
 			name:    "missing file is ignored",
 			missing: true,
 		},
+		{
+			name:        "skips empty lines in file",
+			fileContent: "echo hello\n\n  \necho world\n",
+			wantEntries: []Entry{
+				{Number: 1, Command: "echo hello"},
+				{Number: 2, Command: "echo world"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,7 +229,7 @@ func TestList_AppendFromFile(t *testing.T) {
 			if tt.missing {
 				path = filepath.Join(t.TempDir(), "missing")
 			} else {
-				path = utils.WriteTempFile(t, "histfile", tt.fileContent)
+				path = testutils.WriteTempFile(t, "histfile", tt.fileContent)
 			}
 
 			if err := list.AppendFromFile(path); err != nil {
@@ -253,7 +277,7 @@ func TestList_ReadFromFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := utils.WriteTempFile(t, "histfile", tt.fileContent)
+			path := testutils.WriteTempFile(t, "histfile", tt.fileContent)
 
 			list := &List{}
 			if tt.setup != nil {
@@ -270,6 +294,51 @@ func TestList_ReadFromFile(t *testing.T) {
 			got := list.List()
 			if diff := cmp.Diff(tt.wantEntries(path), got); diff != "" {
 				t.Errorf("ReadFromFile() history mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestList_ReadFromFileAppendSync(t *testing.T) {
+	tests := []struct {
+		name        string
+		fileContent string
+		setup       func(*List)
+		wantAppend  []string
+	}{
+		{
+			name:        "append only writes commands added after read",
+			fileContent: "echo loaded\n",
+			setup: func(l *List) {
+				l.Add("echo new")
+			},
+			wantAppend: []string{"echo new"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := testutils.WriteTempFile(t, "histfile", tt.fileContent)
+			list := &List{}
+
+			if err := list.ReadFromFile(path); err != nil {
+				t.Fatalf("ReadFromFile() error = %v", err)
+			}
+			if tt.setup != nil {
+				tt.setup(list)
+			}
+
+			appendPath := filepath.Join(t.TempDir(), "append.txt")
+			if err := list.AppendToFile(appendPath); err != nil {
+				t.Fatalf("AppendToFile() error = %v", err)
+			}
+
+			got, err := files.ReadLines(appendPath)
+			if err != nil {
+				t.Fatalf("ReadLines() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.wantAppend, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("AppendToFile() after ReadFromFile mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -296,6 +365,13 @@ func TestList_WriteToFile(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "empty history writes empty file",
+			setup: func(*List, string) {},
+			wantFile: func(string) []string {
+				return []string{""}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -319,30 +395,6 @@ func TestList_WriteToFile(t *testing.T) {
 				t.Errorf("WriteToFile() content mismatch (-want +got):\n%s", diff)
 			}
 		})
-	}
-}
-
-func TestList_ReadFromFileUpdatesLastAppended(t *testing.T) {
-	path := utils.WriteTempFile(t, "histfile", "echo loaded\n")
-	list := &List{}
-
-	if err := list.ReadFromFile(path); err != nil {
-		t.Fatalf("ReadFromFile() error = %v", err)
-	}
-	list.Add("echo new")
-
-	appendPath := filepath.Join(t.TempDir(), "append.txt")
-	if err := list.AppendToFile(appendPath); err != nil {
-		t.Fatalf("AppendToFile() error = %v", err)
-	}
-
-	got, err := files.ReadLines(appendPath)
-	if err != nil {
-		t.Fatalf("ReadLines() error = %v", err)
-	}
-	want := []string{"echo new"}
-	if diff := cmp.Diff(want, got, cmpopts.EquateEmpty()); diff != "" {
-		t.Errorf("AppendToFile() after ReadFromFile mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -395,7 +447,7 @@ func TestList_AppendToFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var path string
 			if tt.fileContent != "" {
-				path = utils.WriteTempFile(t, "histfile", tt.fileContent)
+				path = testutils.WriteTempFile(t, "histfile", tt.fileContent)
 			} else {
 				path = filepath.Join(t.TempDir(), "histfile")
 			}
@@ -436,7 +488,7 @@ func TestWriteAll(t *testing.T) {
 				l.Add("previous_command_2")
 				l.Add("history")
 			},
-			want: utils.WantStdout([]string{
+			want: testutils.WantStdout([]string{
 				"    1  previous_command_1",
 				"    2  previous_command_2",
 				"    3  history",

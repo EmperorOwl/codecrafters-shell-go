@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/codecrafters-io/shell-starter-go/app/history"
-	"github.com/codecrafters-io/shell-starter-go/app/utils"
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -58,7 +58,7 @@ func TestHistory(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			historyBuiltin(&stdout, &stderr, tt.args, list)
 
-			if diff := cmp.Diff(utils.WantStdout(tt.wantLines), stdout.String()); diff != "" {
+			if diff := cmp.Diff(testutils.WantStdout(tt.wantLines), stdout.String()); diff != "" {
 				t.Errorf("historyBuiltin(%v) stdout mismatch (-want +got):\n%s", tt.args, diff)
 			}
 		})

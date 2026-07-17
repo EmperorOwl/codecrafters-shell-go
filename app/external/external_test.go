@@ -3,55 +3,16 @@ package external
 import (
 	"bytes"
 	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 )
 
-func writeMockProgram(t *testing.T, dir string) (name string, path string) {
-	t.Helper()
-
-	src := filepath.Join(dir, "mock_prog.go")
-	source := `package main
-
-import (
-	"fmt"
-	"os"
-)
-
-func main() {
-	if len(os.Args) > 1 {
-		fmt.Printf("hello %s\n", os.Args[1])
-		return
-	}
-	fmt.Println("hello")
-}
-`
-	if err := os.WriteFile(src, []byte(source), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	name = "mock_prog"
-	if runtime.GOOS == "windows" {
-		name = "mock_prog.exe"
-	}
-	path = filepath.Join(dir, name)
-	build := exec.Command("go", "build", "-o", path, src)
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build error = %v\n%s", err, out)
-	}
-	return strings.TrimSuffix(name, ".exe"), path
-}
-
 func TestExternalProgram_Run(t *testing.T) {
 	dir := t.TempDir()
-	name, programPath := writeMockProgram(t, dir)
+	name, programPath := testutils.WriteMockProgram(t, dir)
 
 	tests := []struct {
 		name    string
@@ -93,7 +54,7 @@ func TestExternalProgram_Run(t *testing.T) {
 
 func TestExternalProgram_RunInBackground(t *testing.T) {
 	dir := t.TempDir()
-	name, programPath := writeMockProgram(t, dir)
+	name, programPath := testutils.WriteMockProgram(t, dir)
 
 	exited := make(chan struct{})
 	prog := &ExternalProgram{

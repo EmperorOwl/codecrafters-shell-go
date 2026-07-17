@@ -120,6 +120,44 @@ func TestTableMarkDone(t *testing.T) {
 				Status:  StatusDone,
 			}},
 		},
+		{
+			name: "leaves command unchanged without background suffix",
+			setup: func(t *Table) {
+				t.Add(42, "sleep 1")
+			},
+			jobNumber: 1,
+			wantJobs: []Job{{
+				Number:  1,
+				PID:     42,
+				Command: "sleep 1",
+				Status:  StatusDone,
+			}},
+		},
+		{
+			name: "unknown job number is no-op",
+			setup: func(t *Table) {
+				t.Add(42, "sleep 1 &")
+			},
+			jobNumber: 99,
+			wantJobs: []Job{{
+				Number:  1,
+				PID:     42,
+				Command: "sleep 1 &",
+				Status:  StatusRunning,
+			}},
+		},
+		{
+			name: "marks only matching job in multi-job table",
+			setup: func(t *Table) {
+				t.Add(1, "sleep 100 &")
+				t.Add(2, "sleep 1 &")
+			},
+			jobNumber: 2,
+			wantJobs: []Job{
+				{Number: 1, PID: 1, Command: "sleep 100 &", Status: StatusRunning},
+				{Number: 2, PID: 2, Command: "sleep 1", Status: StatusDone},
+			},
+		},
 	}
 
 	for _, tt := range tests {

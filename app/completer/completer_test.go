@@ -69,15 +69,16 @@ func TestCompleteCommand(t *testing.T) {
 	c := New(session.NewSession())
 
 	tests := []struct {
+		name       string
 		buffer     string
 		wantBuffer string
 	}{
-		{buffer: "ech", wantBuffer: "echo "},
-		{buffer: "exi", wantBuffer: "exit "},
+		{name: "completes echo", buffer: "ech", wantBuffer: "echo "},
+		{name: "completes exit", buffer: "exi", wantBuffer: "exit "},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.buffer, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			gotBuffer, gotListings := c.CompleteCommand(tt.buffer)
 			if diff := cmp.Diff(tt.wantBuffer, gotBuffer); diff != "" {
 				t.Errorf("CompleteCommand(%q) buffer mismatch (-want +got):\n%s", tt.buffer, diff)
@@ -221,12 +222,3 @@ func TestBuildCompleterOptions(t *testing.T) {
 	}
 }
 
-func TestHandleTab(t *testing.T) {
-	c := New(session.NewSession())
-	state := &terminal.TabState{}
-
-	got := c.HandleTab(state, "ech")
-	if diff := cmp.Diff(terminal.TabResult{Buffer: "echo "}, got, cmpopts.EquateEmpty()); diff != "" {
-		t.Errorf("HandleTab() mismatch (-want +got):\n%s", diff)
-	}
-}

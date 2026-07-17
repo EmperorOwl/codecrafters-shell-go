@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/codecrafters-io/shell-starter-go/app/utils"
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -24,11 +24,20 @@ func TestType(t *testing.T) {
 		{name: "jobs builtin", args: []string{"jobs"}, wantOut: "jobs is a shell builtin\n"},
 		{name: "history builtin", args: []string{"history"}, wantOut: "history is a shell builtin\n"},
 		{name: "declare builtin", args: []string{"declare"}, wantOut: "declare is a shell builtin\n"},
+		{name: "empty command", args: []string{""}, wantOut: ": not found\n"},
 		{name: "invalid command", args: []string{"invalid_command"}, wantOut: "invalid_command: not found\n"},
+		{
+			name: "prefers builtin over path executable",
+			setup: func(t *testing.T) string {
+				testutils.CreateTempExecutable(t, "echo")
+				return "echo is a shell builtin\n"
+			},
+			args: []string{"echo"},
+		},
 		{
 			name: "reports executable",
 			setup: func(t *testing.T) string {
-				executable := utils.CreateTempExecutable(t, "mycommand")
+				executable := testutils.CreateTempExecutable(t, "mycommand")
 				return "mycommand is " + executable + "\n"
 			},
 			args: []string{"mycommand"},

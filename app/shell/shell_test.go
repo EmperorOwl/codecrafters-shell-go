@@ -7,20 +7,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/codecrafters-io/shell-starter-go/app/history"
 	"github.com/codecrafters-io/shell-starter-go/app/jobs"
+	"github.com/codecrafters-io/shell-starter-go/app/testutils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestNewLoadsHistfileOnStartup(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "histfile")
-	content := "echo hello\necho world\n\n"
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
+	dir := t.TempDir()
+	path := testutils.WriteFileIn(t, dir, "histfile", "echo hello\necho world\n\n")
 	t.Setenv("HISTFILE", path)
 
 	s := New(strings.NewReader(""), io.Discard, io.Discard)
@@ -124,7 +122,7 @@ func TestWriteReapedJobs(t *testing.T) {
 
 			s.writeReapedJobs()
 
-			gotLines := outputLines(out.String())
+			gotLines := testutils.OutputLines(out.String())
 			if diff := cmp.Diff(tt.wantLines, gotLines, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("writeReapedJobs() output mismatch (-want +got):\n%s", diff)
 			}
@@ -274,7 +272,7 @@ func TestExecuteLine(t *testing.T) {
 				t.Errorf("ExecuteLine(%q) stop = %v, want %v", tt.line, gotStop, tt.wantStop)
 			}
 
-			gotStdout := outputLines(out.String())
+			gotStdout := testutils.OutputLines(out.String())
 			if diff := cmp.Diff(tt.wantStdout, gotStdout, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("ExecuteLine(%q) stdout mismatch (-want +got):\n%s", tt.line, diff)
 			}
@@ -282,10 +280,35 @@ func TestExecuteLine(t *testing.T) {
 	}
 }
 
-func outputLines(text string) []string {
-	text = strings.TrimSuffix(text, "\n")
-	if text == "" {
-		return nil
+func TestExecuteBackgroundCommand(t *testing.T) {
+	name, _ := testutils.WriteMockProgramOnPath(t)
+
+	var out bytes.Buffer
+	s := New(strings.NewReader(""), &out, io.Discard)
+
+	stop, err := s.ExecuteLine(name + " &")
+	if err != nil {
+		t.Fatalf("ExecuteLine() error = %v", err)
 	}
-	return strings.Split(text, "\n")
+	if stop {
+		t.Fatal("ExecuteLine() stop = true, want false")
+	}
+
+	gotLines := testutils.OutputLines(out.String())
+	if len(gotLines) != 1 || !strings.HasPrefix(gotLines[0], "[1]") {
+		t.Fatalf("ExecuteLine() job output = %v, want [1] pid prefix", gotLines)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		s.writeReapedJobs()
+		for _, line := range testutils.OutputLines(out.String()) {
+			if strings.Contains(line, "Done") && strings.Contains(line, name) {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatalf("background job was not reaped within 5s; output = %v", testutils.OutputLines(out.String()))
 }

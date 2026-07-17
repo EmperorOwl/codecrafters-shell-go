@@ -120,6 +120,16 @@ func TestRegistry_Lookup(t *testing.T) {
 			wantFound: true,
 			wantPath:  "/path/to/script",
 		},
+		{
+			name: "does not cross-contaminate commands",
+			setup: func(r *Registry) {
+				r.Register("git", "/path/to/git")
+				r.Register("hg", "/path/to/hg")
+			},
+			command:   "hg",
+			wantFound: true,
+			wantPath:  "/path/to/hg",
+		},
 	}
 
 	for _, tt := range tests {
