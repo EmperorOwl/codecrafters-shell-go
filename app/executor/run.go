@@ -55,6 +55,8 @@ func runDrainingStdin(name string, args []string, ctx *builtins.Context, stdin i
 	return exitShell, err
 }
 
+// nonExitError returns nil for exec.ExitError so a command's non-zero exit
+// status does not stop the shell; other errors still propagate.
 func nonExitError(err error) error {
 	if err == nil {
 		return nil

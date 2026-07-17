@@ -8,6 +8,8 @@ import (
 	"github.com/codecrafters-io/shell-starter-go/app/session"
 )
 
+// runPipeline executes each segment concurrently, wiring stages with io.Pipe
+// and returning only the last segment's error.
 func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, sess *session.Session) error {
 	n := len(segments)
 	readers := make([]io.ReadCloser, n-1)
@@ -55,6 +57,9 @@ func (e *Executor) runPipeline(segments [][]string, stdout, stderr io.Writer, se
 	return lastErr
 }
 
+// pipelineStdin returns the reader for a pipeline stage: the previous pipe
+// for later stages, empty input for a leading external command, or nil for
+// a leading builtin (which does not read stdin).
 func pipelineStdin(stage int, fields []string, readers []io.ReadCloser) io.Reader {
 	if stage > 0 {
 		return readers[stage-1]
